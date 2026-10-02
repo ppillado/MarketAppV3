@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { useCallback, useState } from 'react';
 
-import type { Coords } from '@/features/map/hooks/useUserLocation';
+import type { Coords } from '@/types/geo';
 
 type CurrentLocationState =
   | { status: 'idle' }

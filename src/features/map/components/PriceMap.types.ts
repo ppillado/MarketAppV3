@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 
-import type { Coords } from '../hooks/useUserLocation';
+import type { Coords } from '@/types/geo';
 
 export type PriceMapHandle = {
   centerOn: (coords: Coords) => void;

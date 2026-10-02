@@ -1,0 +1,76 @@
+import type { Coords } from '@/types/geo';
+import type { Offer } from '@/types/offer';
+
+// TODO: replace with Supabase data once the backend is connected.
+
+/** Simulated user position (Plaza de la Independencia, Concepción) for mock distances. */
+export const MOCK_USER_COORDS: Coords = { latitude: -36.8270, longitude: -73.0503 };
+
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
+
+export const MOCK_OFFERS: Offer[] = [
+  {
+    id: '1',
+    product: 'Pan amasado 1 kg',
+    price: 1990,
+    storeName: 'Almacén Don Pedro',
+    coords: { latitude: -36.8235, longitude: -73.0441 },
+    createdAt: minutesAgo(10),
+  },
+  {
+    id: '2',
+    product: 'Leche entera 1 L',
+    price: 1090,
+    storeName: 'Minimarket La Esquina',
+    coords: { latitude: -36.8312, longitude: -73.0598 },
+    createdAt: minutesAgo(25),
+  },
+  {
+    id: '3',
+    product: 'Huevos blancos 12 un.',
+    price: 3490,
+    storeName: 'Unimarc Paicaví',
+    coords: { latitude: -36.8148, longitude: -73.0469 },
+    createdAt: minutesAgo(48),
+  },
+  {
+    id: '4',
+    product: 'Aceite maravilla 1 L',
+    price: 2790,
+    storeName: 'Almacén Doña Rosa',
+    coords: { latitude: -36.8576, longitude: -73.0632 },
+    createdAt: minutesAgo(95),
+  },
+  {
+    id: '5',
+    product: 'Arroz grado 2, 1 kg',
+    price: 1490,
+    storeName: 'Líder San Pedro de la Paz',
+    coords: { latitude: -36.8394, longitude: -73.0911 },
+    createdAt: minutesAgo(180),
+  },
+  {
+    id: '6',
+    product: 'Tomates 1 kg',
+    price: 1590,
+    storeName: 'Feria Chiguayante',
+    coords: { latitude: -36.9201, longitude: -73.0283 },
+    createdAt: minutesAgo(320),
+  },
+  {
+    id: '7',
+    product: 'Azúcar 1 kg',
+    price: 1290,
+    storeName: 'Santa Isabel Hualpén',
+    coords: { latitude: -36.7942, longitude: -73.0905 },
+    createdAt: minutesAgo(600),
+  },
+  {
+    id: '8',
+    product: 'Fideos spaghetti 400 g',
+    price: 890,
+    storeName: 'Almacén El Puerto',
+    coords: { latitude: -36.7244, longitude: -73.1166 },
+    createdAt: minutesAgo(1500),
+  },
+];

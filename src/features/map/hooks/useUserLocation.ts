@@ -2,7 +2,8 @@ import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking } from 'react-native';
 
-export type Coords = { latitude: number; longitude: number };
+import type { Coords } from '@/types/geo';
+
 
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 

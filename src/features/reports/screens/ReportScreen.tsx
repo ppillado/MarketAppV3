@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { formatPrice } from '@/lib/format';
 
 import { FormField, FormTextInput } from '../components/FormField';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
@@ -180,11 +181,6 @@ export default function ReportScreen() {
       </SafeAreaView>
     </ThemedView>
   );
-}
-
-/** 1990 -> "1.990" (Chilean thousands separator). */
-function formatPrice(digits: string) {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function locationHint(state: ReturnType<typeof useCurrentLocation>['state']) {

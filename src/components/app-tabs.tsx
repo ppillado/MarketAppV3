@@ -17,6 +17,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="offers">
+        <NativeTabs.Trigger.Label>Ofertas</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'tag', selected: 'tag.fill' }} md="sell" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="report">
         <NativeTabs.Trigger.Label>Reportar</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
