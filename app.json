@@ -17,7 +17,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBa6wc53Od57Dq_dg6iac2eKjx8qqpIBic"
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -31,6 +36,12 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MarketApp usa tu ubicación para mostrarte precios en almacenes cercanos."
         }
       ]
     ],
