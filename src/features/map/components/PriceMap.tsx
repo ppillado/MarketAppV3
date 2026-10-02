@@ -1,9 +1,12 @@
 import { useImperativeHandle, useRef } from 'react';
-import { StyleSheet } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { Platform, StyleSheet } from 'react-native';
+import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { GRAN_CONCEPCION_REGION, USER_REGION_DELTA } from '../constants';
 import type { PriceMapProps } from './PriceMap.types';
+
+// Google Maps on Android, Apple Maps on iOS (no iOS Google key needed).
+const MAP_PROVIDER = Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT;
 
 export function PriceMap({ ref, showsUserLocation }: PriceMapProps) {
   const mapRef = useRef<MapView>(null);
@@ -19,7 +22,7 @@ export function PriceMap({ ref, showsUserLocation }: PriceMapProps) {
   return (
     <MapView
       ref={mapRef}
-      provider={PROVIDER_GOOGLE}
+      provider={MAP_PROVIDER}
       style={StyleSheet.absoluteFill}
       initialRegion={GRAN_CONCEPCION_REGION}
       showsUserLocation={showsUserLocation}
