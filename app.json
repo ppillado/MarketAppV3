@@ -20,9 +20,14 @@
       "predictiveBackGestureEnabled": false,
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBa6wc53Od57Dq_dg6iac2eKjx8qqpIBic"
+          "apiKey": "AIzaSyBa6wc53Od57Dq_dg6iac2eKjx8qqplBic"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.ppillado19.MarketAppV3"
     },
     "web": {
       "output": "static",
@@ -48,6 +53,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1655fed5-af6b-430e-b443-d146ef0a5eef"
+      }
     }
   }
 }
