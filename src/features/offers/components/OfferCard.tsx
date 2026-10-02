@@ -1,10 +1,11 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { openDirections } from '@/lib/directions';
 import { formatDistance, formatPrice, formatTimeAgo } from '@/lib/format';
 import type { Offer } from '@/types/offer';
 
@@ -20,9 +21,7 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
   return (
     <ThemedView
       type="backgroundElement"
-      style={[styles.card, { borderColor: theme.backgroundSelected }]}
-      accessible
-      accessibilityLabel={`${offer.product}, ${formatPrice(offer.price)} pesos, en ${offer.storeName}, ${formatDistance(distanceMeters)}, ${formatTimeAgo(offer.createdAt, now)}`}>
+      style={[styles.card, { borderColor: theme.backgroundSelected }]}>
       <View style={styles.topRow}>
         <ThemedText style={styles.product} numberOfLines={2}>
           {offer.product}
@@ -38,33 +37,45 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
 
       <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
 
-      <View style={styles.metaRow}>
-        <Meta
-          icon={{ ios: 'storefront.fill', android: 'storefront', web: 'storefront' }}
-          text={offer.storeName}
-          style={styles.store}
-        />
-        <Meta
-          icon={{ ios: 'location.fill', android: 'near_me', web: 'near_me' }}
-          text={formatDistance(distanceMeters)}
-        />
+      <View style={styles.bottomRow}>
+        <View style={styles.metaColumn}>
+          <Meta
+            icon={{ ios: 'storefront.fill', android: 'storefront', web: 'storefront' }}
+            text={offer.storeName}
+          />
+          <Meta
+            icon={{ ios: 'location.fill', android: 'near_me', web: 'near_me' }}
+            text={formatDistance(distanceMeters)}
+          />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Ir a ${offer.storeName}`}
+          onPress={() => openDirections(offer.coords, offer.storeName)}
+          style={({ pressed }) => [
+            styles.goButton,
+            { backgroundColor: theme.accent },
+            pressed && styles.pressed,
+          ]}>
+          <SymbolView
+            name={{ ios: 'car.fill', android: 'directions_car', web: 'directions_car' }}
+            tintColor={theme.onAccent}
+            size={18}
+          />
+          <ThemedText type="smallBold" style={{ color: theme.onAccent }}>
+            Ir
+          </ThemedText>
+        </Pressable>
       </View>
     </ThemedView>
   );
 }
 
-function Meta({
-  icon,
-  text,
-  style,
-}: {
-  icon: SymbolViewProps['name'];
-  text: string;
-  style?: object;
-}) {
+function Meta({ icon, text }: { icon: SymbolViewProps['name']; text: string }) {
   const theme = useTheme();
   return (
-    <View style={[styles.meta, style]}>
+    <View style={styles.meta}>
       <SymbolView name={icon} tintColor={theme.textSecondary} size={16} />
       <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.metaText}>
         {text}
@@ -102,21 +113,32 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginVertical: Spacing.one,
   },
-  metaRow: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: Spacing.three,
+  },
+  metaColumn: {
+    flex: 1,
+    gap: Spacing.one,
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one + Spacing.half,
   },
-  store: {
-    flex: 1,
-  },
   metaText: {
     flexShrink: 1,
+  },
+  goButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+    minHeight: 44,
+    paddingHorizontal: Spacing.three + Spacing.one,
+    borderRadius: 999,
+  },
+  pressed: {
+    opacity: 0.75,
   },
 });
