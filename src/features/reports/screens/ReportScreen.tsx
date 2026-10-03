@@ -1,3 +1,5 @@
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import {
@@ -16,35 +18,79 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useUserLocation } from '@/features/location/LocationProvider';
+import { useOffersStore } from '@/features/offers/OffersProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPrice } from '@/lib/format';
 
 import { FormField, FormTextInput } from '../components/FormField';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
+import { usePhotoPicker } from '../hooks/usePhotoPicker';
+import { PublishError, publishOffer } from '../reportsApi';
 
 const MAX_PRICE_DIGITS = 7; // up to $9.999.999 CLP
 
 export default function ReportScreen() {
   const theme = useTheme();
   const location = useCurrentLocation();
+  const liveLocation = useUserLocation();
+  const offersStore = useOffersStore();
+  const photo = usePhotoPicker();
   const [product, setProduct] = useState('');
   const [priceDigits, setPriceDigits] = useState('');
   const [store, setStore] = useState('');
+  const [publishing, setPublishing] = useState(false);
 
-  const canPublish = product.trim() !== '' && Number(priceDigits) > 0 && store.trim() !== '';
+  const isComplete = product.trim() !== '' && Number(priceDigits) > 0 && store.trim() !== '';
+  const canPublish = isComplete && !publishing;
+  // The offer is pinned where it was reported: the attached location, or else the live GPS fix.
+  const offerCoords =
+    location.state.status === 'done' ? location.state.coords : liveLocation.coords;
 
   const onPriceChange = (text: string) =>
     setPriceDigits(text.replace(/\D/g, '').replace(/^0+/, '').slice(0, MAX_PRICE_DIGITS));
 
-  const onAddPhoto = () =>
-    Alert.alert('Foto', 'La cámara y la galería se activan en el próximo build de la app.');
+  const resetForm = () => {
+    setProduct('');
+    setPriceDigits('');
+    setStore('');
+    photo.clearPhoto();
+    location.clear();
+  };
 
-  const onPublish = () =>
-    // TODO: send to Supabase (server-side outlier validation) once the backend is connected.
-    Alert.alert(
-      'Oferta lista',
-      `${product.trim()} a $${formatPrice(priceDigits)} en ${store.trim()}.\n\nEl envío se activará al conectar el servidor.`,
-    );
+  const onPublish = async () => {
+    if (!offerCoords) {
+      Alert.alert(
+        'Falta la ubicación',
+        'Toca el ícono de ubicación junto al local para indicar dónde está la oferta.',
+      );
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      await publishOffer({
+        product: product.trim(),
+        price: Number(priceDigits),
+        storeName: store.trim(),
+        coords: offerCoords,
+        photoUri: photo.photoUri,
+      });
+      resetForm();
+      offersStore.refresh();
+      Alert.alert('¡Oferta publicada!', 'Gracias por ayudar a tus vecinos a comprar más barato.', [
+        { text: 'Ver en el mapa', onPress: () => router.navigate('/') },
+        { text: 'Reportar otra', style: 'cancel' },
+      ]);
+    } catch (error) {
+      Alert.alert(
+        'No se pudo publicar',
+        error instanceof PublishError ? error.message : 'Ocurrió un error inesperado.',
+      );
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -140,25 +186,55 @@ export default function ReportScreen() {
             </FormField>
 
             <FormField label="Foto (opcional)">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Tomar o seleccionar una foto"
-                onPress={onAddPhoto}
-                style={({ pressed }) => [
-                  styles.photoArea,
-                  { borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
-                  pressed && styles.pressed,
-                ]}>
-                <SymbolView
-                  name={{ ios: 'camera.fill', android: 'photo_camera', web: 'photo_camera' }}
-                  tintColor={theme.textSecondary}
-                  size={32}
-                />
-                <ThemedText type="smallBold">Tomar o seleccionar foto</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Una foto de la etiqueta da más confianza a tu reporte
-                </ThemedText>
-              </Pressable>
+              {photo.photoUri ? (
+                <View style={styles.photoPreview}>
+                  <Image
+                    source={{ uri: photo.photoUri }}
+                    style={styles.photoImage}
+                    contentFit="cover"
+                    accessibilityLabel="Foto de la etiqueta"
+                  />
+                  <View style={styles.photoActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={photo.choosePhoto}
+                      style={({ pressed }) => [styles.photoAction, pressed && styles.pressed]}>
+                      <ThemedText type="smallBold" style={styles.photoActionText}>
+                        Cambiar
+                      </ThemedText>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Quitar foto"
+                      onPress={photo.clearPhoto}
+                      style={({ pressed }) => [styles.photoAction, pressed && styles.pressed]}>
+                      <ThemedText type="smallBold" style={styles.photoActionText}>
+                        Quitar
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Tomar o seleccionar una foto"
+                  onPress={photo.choosePhoto}
+                  style={({ pressed }) => [
+                    styles.photoArea,
+                    { borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
+                    pressed && styles.pressed,
+                  ]}>
+                  <SymbolView
+                    name={{ ios: 'camera.fill', android: 'photo_camera', web: 'photo_camera' }}
+                    tintColor={theme.textSecondary}
+                    size={32}
+                  />
+                  <ThemedText type="smallBold">Tomar o seleccionar foto</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Una foto de la etiqueta da más confianza a tu reporte
+                  </ThemedText>
+                </Pressable>
+              )}
             </FormField>
 
             <Pressable
@@ -169,12 +245,16 @@ export default function ReportScreen() {
               style={({ pressed }) => [
                 styles.publishButton,
                 { backgroundColor: theme.accent },
-                !canPublish && styles.disabled,
+                !isComplete && styles.disabled,
                 pressed && styles.pressed,
               ]}>
-              <ThemedText style={[styles.publishText, { color: theme.onAccent }]}>
-                Publicar Oferta
-              </ThemedText>
+              {publishing ? (
+                <ActivityIndicator color={theme.onAccent} />
+              ) : (
+                <ThemedText style={[styles.publishText, { color: theme.onAccent }]}>
+                  Publicar Oferta
+                </ThemedText>
+              )}
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -261,6 +341,30 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.four,
     borderWidth: 1.5,
     borderStyle: 'dashed',
+  },
+  photoPreview: {
+    borderRadius: Spacing.four,
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+  },
+  photoActions: {
+    position: 'absolute',
+    right: Spacing.two,
+    bottom: Spacing.two,
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  photoAction: {
+    paddingVertical: Spacing.one + Spacing.half,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  photoActionText: {
+    color: '#ffffff',
   },
   publishButton: {
     marginTop: Spacing.two,

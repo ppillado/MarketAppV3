@@ -9,6 +9,8 @@ export type Offer = {
   storeName: string;
   coords: Coords;
   createdAt: Date;
+  /** Public URL of the price-tag photo, if the reporter attached one. */
+  photoUrl: string | null;
   /** Community votes: "👍 Confirmar" (price still valid) and "👎 Agotado/Error". */
   confirmations: number;
   reports: number;

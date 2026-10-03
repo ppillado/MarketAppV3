@@ -5,7 +5,7 @@ import type { Offer } from '@/types/offer';
 
 /** The app covers Gran Concepción, so one region-wide query serves every screen. */
 const QUERY_RADIUS_M = 30_000;
-const CACHE_KEY = 'offers-cache-v1';
+const CACHE_KEY = 'offers-cache-v2'; // v2: offers include photoUrl
 
 /** Row shape returned by the `nearby_offers` RPC (supabase/migrations). */
 type NearbyOfferRow = {
@@ -40,6 +40,7 @@ export async function fetchOffers(): Promise<Offer[]> {
     storeName: row.store_name,
     coords: { latitude: row.latitude, longitude: row.longitude },
     createdAt: new Date(row.created_at),
+    photoUrl: row.photo_url,
     confirmations: row.confirmations,
     reports: row.reports,
   }));

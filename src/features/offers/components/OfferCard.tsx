@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -25,18 +26,32 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
     <ThemedView
       type="backgroundElement"
       style={[styles.card, { borderColor: theme.backgroundSelected }]}>
-      <View style={styles.topRow}>
-        <ThemedText style={styles.product} numberOfLines={2}>
-          {offer.product}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {formatTimeAgo(offer.createdAt, now)}
-        </ThemedText>
-      </View>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <View style={styles.topRow}>
+            <ThemedText style={styles.product} numberOfLines={2}>
+              {offer.product}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {formatTimeAgo(offer.createdAt, now)}
+            </ThemedText>
+          </View>
 
-      <ThemedText style={[styles.price, { color: theme.accent }]}>
-        ${formatPrice(offer.price)}
-      </ThemedText>
+          <ThemedText style={[styles.price, { color: theme.accent }]}>
+            ${formatPrice(offer.price)}
+          </ThemedText>
+        </View>
+
+        {offer.photoUrl && (
+          <Image
+            source={{ uri: offer.photoUrl }}
+            style={[styles.photo, { backgroundColor: theme.backgroundSelected }]}
+            contentFit="cover"
+            transition={150}
+            accessibilityLabel={`Foto de la etiqueta de ${offer.product}`}
+          />
+        )}
+      </View>
 
       <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
 
@@ -97,6 +112,19 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.four,
     borderWidth: StyleSheet.hairlineWidth,
     gap: Spacing.two,
+  },
+  header: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  headerText: {
+    flex: 1,
+    gap: Spacing.two,
+  },
+  photo: {
+    width: 76,
+    height: 76,
+    borderRadius: Spacing.three,
   },
   topRow: {
     flexDirection: 'row',
