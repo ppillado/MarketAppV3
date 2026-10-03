@@ -6,16 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useUserLocation } from '@/features/location/LocationProvider';
 import { OfferCard } from '@/features/offers/components/OfferCard';
 import { useOffers } from '@/features/offers/hooks/useOffers';
-import { MOCK_USER_COORDS } from '@/features/offers/mockOffers';
 import { useTheme } from '@/hooks/use-theme';
-import { distanceInMeters } from '@/lib/geo';
 
 import { LocationPermissionBanner } from '../components/LocationPermissionBanner';
 import { PriceMap } from '../components/PriceMap';
 import type { PriceMapHandle } from '../components/PriceMap.types';
-import { useUserLocation } from '../hooks/useUserLocation';
 
 export default function MapScreen() {
   const theme = useTheme();
@@ -27,8 +25,7 @@ export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
 
-  const selectedOffer = offers.find((offer) => offer.id === selectedId) ?? null;
-  const origin = location.coords ?? MOCK_USER_COORDS;
+  const selected = offers.find(({ offer }) => offer.id === selectedId) ?? null;
 
   // Center on the user the first time we get a fix; afterwards the user controls the camera.
   useEffect(() => {
@@ -48,7 +45,7 @@ export default function MapScreen() {
       <PriceMap
         ref={mapRef}
         showsUserLocation={location.granted}
-        offers={offers}
+        offers={offers.map(({ offer }) => offer)}
         selectedOfferId={selectedId}
         onSelectOffer={(offer) => setSelectedId(offer?.id ?? null)}
       />
@@ -83,15 +80,11 @@ export default function MapScreen() {
           </ThemedView>
         )}
 
-        {selectedOffer && (
-          <OfferCard
-            offer={selectedOffer}
-            distanceMeters={distanceInMeters(origin, selectedOffer.coords)}
-            now={now}
-          />
+        {selected && (
+          <OfferCard offer={selected.offer} distanceMeters={selected.distanceMeters} now={now} />
         )}
 
-        {location.denied && !selectedOffer && (
+        {location.denied && !selected && (
           <LocationPermissionBanner
             canAskAgain={location.canAskAgain}
             onRetry={location.request}

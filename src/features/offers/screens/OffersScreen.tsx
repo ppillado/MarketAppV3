@@ -5,16 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { distanceInMeters } from '@/lib/geo';
 import { normalizeText } from '@/lib/text';
-import type { Offer } from '@/types/offer';
 
 import { OfferCard } from '../components/OfferCard';
 import { OffersToolbar, type OfferSort } from '../components/OffersToolbar';
-import { useOffers } from '../hooks/useOffers';
-import { MOCK_USER_COORDS } from '../mockOffers';
-
-type OfferWithDistance = { offer: Offer; distance: number };
+import { useOffers, type OfferWithDistance } from '../hooks/useOffers';
 
 const byRecent = (a: OfferWithDistance, b: OfferWithDistance) =>
   b.offer.createdAt.getTime() - a.offer.createdAt.getTime();
@@ -22,7 +17,10 @@ const byRecent = (a: OfferWithDistance, b: OfferWithDistance) =>
 const COMPARATORS: Record<OfferSort, (a: OfferWithDistance, b: OfferWithDistance) => number> = {
   recent: byRecent,
   price: (a, b) => a.offer.price - b.offer.price || byRecent(a, b),
-  distance: (a, b) => a.distance - b.distance || byRecent(a, b),
+  distance: (a, b) =>
+    a.distanceMeters === null || b.distanceMeters === null
+      ? byRecent(a, b)
+      : a.distanceMeters - b.distanceMeters || byRecent(a, b),
 };
 
 export default function OffersScreen() {
@@ -30,13 +28,14 @@ export default function OffersScreen() {
   const [now] = useState(() => Date.now());
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OfferSort>('recent');
-  const { offers } = useOffers();
+  const { offers, hasLocation } = useOffers();
 
+  // Without a GPS fix there is nothing to sort by distance; fall back to recency.
+  const effectiveSort = sort === 'distance' && !hasLocation ? 'recent' : sort;
   const search = normalizeText(query);
   const visible = offers
-    .map((offer) => ({ offer, distance: distanceInMeters(MOCK_USER_COORDS, offer.coords) }))
     .filter(({ offer }) => normalizeText(offer.product).includes(search))
-    .sort(COMPARATORS[sort]);
+    .sort(COMPARATORS[effectiveSort]);
 
   return (
     <ThemedView style={styles.container}>
@@ -45,14 +44,17 @@ export default function OffersScreen() {
           <View style={styles.titleBlock}>
             <ThemedText type="subtitle">Ofertas</ThemedText>
             <ThemedText themeColor="textSecondary">
-              Precios reportados por tus vecinos en el Gran Concepción.
+              {hasLocation
+                ? 'Precios reportados por tus vecinos en el Gran Concepción.'
+                : 'Activa tu ubicación para ver a qué distancia está cada oferta.'}
             </ThemedText>
           </View>
           <OffersToolbar
             query={query}
             onQueryChange={setQuery}
-            sort={sort}
+            sort={effectiveSort}
             onSortChange={setSort}
+            distanceSortEnabled={hasLocation}
           />
         </View>
 
@@ -60,7 +62,7 @@ export default function OffersScreen() {
           data={visible}
           keyExtractor={({ offer }) => offer.id}
           renderItem={({ item }) => (
-            <OfferCard offer={item.offer} distanceMeters={item.distance} now={now} />
+            <OfferCard offer={item.offer} distanceMeters={item.distanceMeters} now={now} />
           )}
           ItemSeparatorComponent={Separator}
           ListEmptyComponent={

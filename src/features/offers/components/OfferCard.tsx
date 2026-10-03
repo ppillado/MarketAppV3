@@ -11,7 +11,8 @@ import type { Offer } from '@/types/offer';
 
 type Props = {
   offer: Offer;
-  distanceMeters: number;
+  /** Null while the user's position is unknown (hides the distance). */
+  distanceMeters: number | null;
   now: number;
 };
 
@@ -43,10 +44,12 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
             icon={{ ios: 'storefront.fill', android: 'storefront', web: 'storefront' }}
             text={offer.storeName}
           />
-          <Meta
-            icon={{ ios: 'location.fill', android: 'near_me', web: 'near_me' }}
-            text={formatDistance(distanceMeters)}
-          />
+          {distanceMeters !== null && (
+            <Meta
+              icon={{ ios: 'location.fill', android: 'near_me', web: 'near_me' }}
+              text={formatDistance(distanceMeters)}
+            />
+          )}
         </View>
 
         <Pressable

@@ -18,9 +18,17 @@ type Props = {
   onQueryChange: (query: string) => void;
   sort: OfferSort;
   onSortChange: (sort: OfferSort) => void;
+  /** "Más cercano" needs the user's position. */
+  distanceSortEnabled: boolean;
 };
 
-export function OffersToolbar({ query, onQueryChange, sort, onSortChange }: Props) {
+export function OffersToolbar({
+  query,
+  onQueryChange,
+  sort,
+  onSortChange,
+  distanceSortEnabled,
+}: Props) {
   const theme = useTheme();
 
   return (
@@ -68,17 +76,20 @@ export function OffersToolbar({ query, onQueryChange, sort, onSortChange }: Prop
         accessibilityRole="radiogroup">
         {SORT_OPTIONS.map((option) => {
           const selected = option.value === sort;
+          const disabled = option.value === 'distance' && !distanceSortEnabled;
           return (
             <Pressable
               key={option.value}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              accessibilityState={{ selected, disabled }}
+              disabled={disabled}
               onPress={() => onSortChange(option.value)}
               style={({ pressed }) => [
                 styles.chip,
                 selected
                   ? { backgroundColor: theme.text, borderColor: theme.text }
                   : { backgroundColor: 'transparent', borderColor: theme.backgroundSelected },
+                disabled && styles.disabled,
                 pressed && styles.pressed,
               ]}>
               <ThemedText
@@ -123,5 +134,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  disabled: {
+    opacity: 0.4,
   },
 });

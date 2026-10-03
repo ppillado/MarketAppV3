@@ -1,10 +1,6 @@
-import type { Coords } from '@/types/geo';
 import type { Offer } from '@/types/offer';
 
 // TODO: replace with Supabase data once the backend is connected.
-
-/** Simulated user position (Plaza de la Independencia, Concepción) for mock distances. */
-export const MOCK_USER_COORDS: Coords = { latitude: -36.8270, longitude: -73.0503 };
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
 
