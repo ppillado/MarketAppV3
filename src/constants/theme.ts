@@ -16,6 +16,7 @@ export const Colors = {
     textSecondary: '#60646C',
     accent: '#0E9F6E',
     onAccent: '#ffffff',
+    danger: '#DC2626',
   },
   dark: {
     text: '#ffffff',
@@ -25,6 +26,7 @@ export const Colors = {
     textSecondary: '#B0B4BA',
     accent: '#22C55E',
     onAccent: '#052E14',
+    danger: '#F87171',
   },
 } as const;
 

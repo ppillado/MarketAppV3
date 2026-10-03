@@ -9,4 +9,7 @@ export type Offer = {
   storeName: string;
   coords: Coords;
   createdAt: Date;
+  /** Community votes: "👍 Confirmar" (price still valid) and "👎 Agotado/Error". */
+  confirmations: number;
+  reports: number;
 };

@@ -9,6 +9,8 @@ import { openDirections } from '@/lib/directions';
 import { formatDistance, formatPrice, formatTimeAgo } from '@/lib/format';
 import type { Offer } from '@/types/offer';
 
+import { VoteBar } from './VoteBar';
+
 type Props = {
   offer: Offer;
   /** Null while the user's position is unknown (hides the distance). */
@@ -71,6 +73,8 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
           </ThemedText>
         </Pressable>
       </View>
+
+      <VoteBar offer={offer} />
     </ThemedView>
   );
 }

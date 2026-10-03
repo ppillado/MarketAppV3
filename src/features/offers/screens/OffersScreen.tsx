@@ -28,12 +28,12 @@ export default function OffersScreen() {
   const [now] = useState(() => Date.now());
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OfferSort>('recent');
-  const { offers, hasLocation } = useOffers();
+  const { withDistance, hasLocation } = useOffers();
 
   // Without a GPS fix there is nothing to sort by distance; fall back to recency.
   const effectiveSort = sort === 'distance' && !hasLocation ? 'recent' : sort;
   const search = normalizeText(query);
-  const visible = offers
+  const visible = withDistance
     .filter(({ offer }) => normalizeText(offer.product).includes(search))
     .sort(COMPARATORS[effectiveSort]);
 

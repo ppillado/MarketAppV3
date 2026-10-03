@@ -12,6 +12,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Almacén Don Pedro',
     coords: { latitude: -36.8235, longitude: -73.0441 },
     createdAt: minutesAgo(10),
+    confirmations: 12,
+    reports: 0,
   },
   {
     id: '2',
@@ -20,6 +22,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Minimarket La Esquina',
     coords: { latitude: -36.8312, longitude: -73.0598 },
     createdAt: minutesAgo(25),
+    confirmations: 5,
+    reports: 1,
   },
   {
     id: '3',
@@ -28,6 +32,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Unimarc Paicaví',
     coords: { latitude: -36.8148, longitude: -73.0469 },
     createdAt: minutesAgo(48),
+    confirmations: 8,
+    reports: 0,
   },
   {
     id: '4',
@@ -36,6 +42,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Almacén Doña Rosa',
     coords: { latitude: -36.8576, longitude: -73.0632 },
     createdAt: minutesAgo(95),
+    confirmations: 3,
+    reports: 2,
   },
   {
     id: '5',
@@ -44,6 +52,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Líder San Pedro de la Paz',
     coords: { latitude: -36.8394, longitude: -73.0911 },
     createdAt: minutesAgo(180),
+    confirmations: 15,
+    reports: 1,
   },
   {
     id: '6',
@@ -52,6 +62,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Feria Chiguayante',
     coords: { latitude: -36.9201, longitude: -73.0283 },
     createdAt: minutesAgo(320),
+    confirmations: 2,
+    reports: 0,
   },
   {
     id: '7',
@@ -60,6 +72,8 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Santa Isabel Hualpén',
     coords: { latitude: -36.7942, longitude: -73.0905 },
     createdAt: minutesAgo(600),
+    confirmations: 1,
+    reports: 4,
   },
   {
     id: '8',
@@ -68,5 +82,7 @@ export const MOCK_OFFERS: Offer[] = [
     storeName: 'Almacén El Puerto',
     coords: { latitude: -36.7244, longitude: -73.1166 },
     createdAt: minutesAgo(1500),
+    confirmations: 0,
+    reports: 0,
   },
 ];

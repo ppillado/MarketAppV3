@@ -4,6 +4,7 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LocationProvider } from '@/features/location/LocationProvider';
+import { OfferVotesProvider } from '@/features/offers/OfferVotesProvider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -12,10 +13,12 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <LocationProvider>
-        <AnimatedSplashOverlay />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+        <OfferVotesProvider>
+          <AnimatedSplashOverlay />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </OfferVotesProvider>
       </LocationProvider>
     </ThemeProvider>
   );

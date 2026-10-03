@@ -18,10 +18,12 @@ export type OfferWithDistance = {
 export function useOffers() {
   const { coords } = useUserLocation();
 
-  const offers: OfferWithDistance[] = MOCK_OFFERS.map((offer) => ({
+  const offers = MOCK_OFFERS;
+  const withDistance: OfferWithDistance[] = offers.map((offer) => ({
     offer,
     distanceMeters: coords ? distanceInMeters(coords, offer.coords) : null,
   }));
 
-  return { offers, hasLocation: coords !== null };
+  // `offers` stays referentially stable across GPS updates (the map clusters key off it).
+  return { offers, withDistance, hasLocation: coords !== null };
 }

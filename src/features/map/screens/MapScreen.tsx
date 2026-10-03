@@ -21,11 +21,11 @@ export default function MapScreen() {
   const mapRef = useRef<PriceMapHandle>(null);
   const location = useUserLocation();
   const hasCentered = useRef(false);
-  const { offers } = useOffers();
+  const { offers, withDistance } = useOffers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
 
-  const selected = offers.find(({ offer }) => offer.id === selectedId) ?? null;
+  const selected = withDistance.find(({ offer }) => offer.id === selectedId) ?? null;
 
   // Center on the user the first time we get a fix; afterwards the user controls the camera.
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function MapScreen() {
       <PriceMap
         ref={mapRef}
         showsUserLocation={location.granted}
-        offers={offers.map(({ offer }) => offer)}
+        offers={offers}
         selectedOfferId={selectedId}
         onSelectOffer={(offer) => setSelectedId(offer?.id ?? null)}
       />
