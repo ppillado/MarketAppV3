@@ -126,3 +126,10 @@ export function useOfferVote(offer: Offer) {
     toggle: (vote: Vote) => context.toggleVote(offer, vote, shown),
   };
 }
+
+/** How many offers the current user has voted on. */
+export function useMyVoteCount() {
+  const context = use(OfferVotesContext);
+  if (!context) throw new Error('useMyVoteCount must be used inside <OfferVotesProvider>');
+  return Object.keys(context.votes).length;
+}

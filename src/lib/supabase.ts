@@ -21,6 +21,8 @@ export const supabase =
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: false,
+          // PKCE: OAuth redirects (e.g. linking Google) return a one-time code, not tokens.
+          flowType: 'pkce',
         },
       })
     : null;
