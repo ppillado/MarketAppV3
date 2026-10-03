@@ -1,12 +1,16 @@
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { OfferCard } from '@/features/offers/components/OfferCard';
+import { useOffers } from '@/features/offers/hooks/useOffers';
+import { MOCK_USER_COORDS } from '@/features/offers/mockOffers';
 import { useTheme } from '@/hooks/use-theme';
+import { distanceInMeters } from '@/lib/geo';
 
 import { LocationPermissionBanner } from '../components/LocationPermissionBanner';
 import { PriceMap } from '../components/PriceMap';
@@ -19,6 +23,12 @@ export default function MapScreen() {
   const mapRef = useRef<PriceMapHandle>(null);
   const location = useUserLocation();
   const hasCentered = useRef(false);
+  const { offers } = useOffers();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [now] = useState(() => Date.now());
+
+  const selectedOffer = offers.find((offer) => offer.id === selectedId) ?? null;
+  const origin = location.coords ?? MOCK_USER_COORDS;
 
   // Center on the user the first time we get a fix; afterwards the user controls the camera.
   useEffect(() => {
@@ -35,7 +45,13 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <PriceMap ref={mapRef} showsUserLocation={location.granted} />
+      <PriceMap
+        ref={mapRef}
+        showsUserLocation={location.granted}
+        offers={offers}
+        selectedOfferId={selectedId}
+        onSelectOffer={(offer) => setSelectedId(offer?.id ?? null)}
+      />
 
       <View
         pointerEvents="box-none"
@@ -67,7 +83,15 @@ export default function MapScreen() {
           </ThemedView>
         )}
 
-        {location.denied && (
+        {selectedOffer && (
+          <OfferCard
+            offer={selectedOffer}
+            distanceMeters={distanceInMeters(origin, selectedOffer.coords)}
+            now={now}
+          />
+        )}
+
+        {location.denied && !selectedOffer && (
           <LocationPermissionBanner
             canAskAgain={location.canAskAgain}
             onRetry={location.request}

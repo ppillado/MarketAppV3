@@ -11,14 +11,10 @@ import type { Offer } from '@/types/offer';
 
 import { OfferCard } from '../components/OfferCard';
 import { OffersToolbar, type OfferSort } from '../components/OffersToolbar';
-import { MOCK_OFFERS, MOCK_USER_COORDS } from '../mockOffers';
+import { useOffers } from '../hooks/useOffers';
+import { MOCK_USER_COORDS } from '../mockOffers';
 
 type OfferWithDistance = { offer: Offer; distance: number };
-
-const ITEMS: OfferWithDistance[] = MOCK_OFFERS.map((offer) => ({
-  offer,
-  distance: distanceInMeters(MOCK_USER_COORDS, offer.coords),
-}));
 
 const byRecent = (a: OfferWithDistance, b: OfferWithDistance) =>
   b.offer.createdAt.getTime() - a.offer.createdAt.getTime();
@@ -34,11 +30,13 @@ export default function OffersScreen() {
   const [now] = useState(() => Date.now());
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OfferSort>('recent');
+  const { offers } = useOffers();
 
   const search = normalizeText(query);
-  const visible = ITEMS.filter(({ offer }) => normalizeText(offer.product).includes(search)).sort(
-    COMPARATORS[sort],
-  );
+  const visible = offers
+    .map((offer) => ({ offer, distance: distanceInMeters(MOCK_USER_COORDS, offer.coords) }))
+    .filter(({ offer }) => normalizeText(offer.product).includes(search))
+    .sort(COMPARATORS[sort]);
 
   return (
     <ThemedView style={styles.container}>
