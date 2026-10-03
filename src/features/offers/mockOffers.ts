@@ -1,6 +1,6 @@
 import type { Offer } from '@/types/offer';
 
-// TODO: replace with Supabase data once the backend is connected.
+// Fallback data while Supabase isn't configured (see src/lib/supabase.ts and supabase/seed.sql).
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
 

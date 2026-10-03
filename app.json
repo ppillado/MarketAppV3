@@ -48,6 +48,15 @@
         {
           "locationWhenInUsePermission": "MarketApp usa tu ubicación para mostrarte precios en almacenes cercanos."
         }
+      ],
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MarketApp usa tus fotos para adjuntar la etiqueta de precio a tu reporte.",
+          "cameraPermission": "MarketApp usa la cámara para fotografiar la etiqueta de precio de tu reporte.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

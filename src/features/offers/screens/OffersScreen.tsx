@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { normalizeText } from '@/lib/text';
 
 import { OfferCard } from '../components/OfferCard';
@@ -24,11 +25,17 @@ const COMPARATORS: Record<OfferSort, (a: OfferWithDistance, b: OfferWithDistance
 };
 
 export default function OffersScreen() {
-  // Fixed reference time per mount, so "hace X min" stays consistent while scrolling.
-  const [now] = useState(() => Date.now());
+  const theme = useTheme();
+  // Fixed reference time (reset on refresh), so "hace X min" stays consistent while scrolling.
+  const [now, setNow] = useState(() => Date.now());
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OfferSort>('recent');
-  const { withDistance, hasLocation } = useOffers();
+  const { withDistance, hasLocation, error, refreshing, refresh } = useOffers();
+
+  const onRefresh = async () => {
+    await refresh();
+    setNow(Date.now());
+  };
 
   // Without a GPS fix there is nothing to sort by distance; fall back to recency.
   const effectiveSort = sort === 'distance' && !hasLocation ? 'recent' : sort;
@@ -56,6 +63,13 @@ export default function OffersScreen() {
             onSortChange={setSort}
             distanceSortEnabled={hasLocation}
           />
+          {error && (
+            <ThemedView type="backgroundElement" style={styles.notice}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {error}
+              </ThemedText>
+            </ThemedView>
+          )}
         </View>
 
         <FlatList
@@ -67,11 +81,24 @@ export default function OffersScreen() {
           ItemSeparatorComponent={Separator}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <ThemedText type="smallBold">Sin resultados</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                No hay ofertas para “{query.trim()}”. Prueba con otro producto.
+              <ThemedText type="smallBold">
+                {search ? 'Sin resultados' : 'Aún no hay ofertas cerca'}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {search
+                  ? `No hay ofertas para “${query.trim()}”. Prueba con otro producto.`
+                  : 'Sé el primero en reportar un precio desde la pestaña Reportar.'}
               </ThemedText>
             </View>
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.textSecondary}
+              colors={[theme.accent]}
+              progressBackgroundColor={theme.backgroundElement}
+            />
           }
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -119,5 +146,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     paddingVertical: Spacing.six,
+  },
+  emptyText: {
+    textAlign: 'center',
+  },
+  notice: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
   },
 });
