@@ -9,7 +9,7 @@ import { useOfferVote } from '../OfferVotesProvider';
 
 /** Discreet community validation: "👍 Confirmar" / "👎 Agotado/Error". */
 export function VoteBar({ offer }: { offer: Offer }) {
-  const { myVote, confirmations, reports, toggle } = useOfferVote(offer);
+  const { myVote, confirmations, reports, pending, toggle } = useOfferVote(offer);
 
   return (
     <View style={styles.row}>
@@ -18,6 +18,7 @@ export function VoteBar({ offer }: { offer: Offer }) {
         label="Confirmar"
         count={confirmations}
         active={myVote === 'confirm'}
+        disabled={pending}
         tone="accent"
         accessibilityLabel={`Confirmar que el precio sigue vigente. ${confirmations} confirmaciones`}
         onPress={() => toggle('confirm')}
@@ -27,6 +28,7 @@ export function VoteBar({ offer }: { offer: Offer }) {
         label="Agotado/Error"
         count={reports}
         active={myVote === 'report'}
+        disabled={pending}
         tone="danger"
         accessibilityLabel={`Reportar como agotado o con error. ${reports} reportes`}
         onPress={() => toggle('report')}
@@ -40,6 +42,7 @@ type VoteButtonProps = {
   label: string;
   count: number;
   active: boolean;
+  disabled: boolean;
   tone: 'accent' | 'danger';
   accessibilityLabel: string;
   onPress: () => void;
@@ -50,6 +53,7 @@ function VoteButton({
   label,
   count,
   active,
+  disabled,
   tone,
   accessibilityLabel,
   onPress,
@@ -61,8 +65,9 @@ function VoteButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled }}
       hitSlop={6}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
