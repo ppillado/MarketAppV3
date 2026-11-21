@@ -31,9 +31,21 @@ import { FormField, FormTextInput } from '../components/FormField';
 import { NearbyStorePicker } from '../components/NearbyStorePicker';
 import { useCurrentLocation, type CurrentLocationState } from '../hooks/useCurrentLocation';
 import { usePhotoPicker } from '../hooks/usePhotoPicker';
+import {
+  normalizeProductName,
+  PRODUCT_MAX_LENGTH,
+  validatePrice,
+  validateProduct,
+} from '../offerValidation';
 import { PublishError, publishOffer } from '../reportsApi';
 
-const MAX_PRICE_DIGITS = 7; // up to $9.999.999 CLP
+const MAX_PRICE_DIGITS = 6; // up to $999.999 CLP; validatePrice caps it at $500.000
+
+/** submit_offer error codes shown under a specific field (besides the alert). */
+const PRODUCT_ERROR_CODES = new Set(['invalid_product_name']);
+const PRICE_ERROR_CODES = new Set(['invalid_price', 'price_outlier']);
+
+type ServerFieldError = { field: 'product' | 'price'; message: string } | null;
 
 /** The store the offer goes to: an existing one (sends p_store_id) or a new one. */
 type StoreChoice = { kind: 'existing'; id: string; name: string; address: string | null } | { kind: 'new' };
@@ -58,6 +70,10 @@ export default function ReportScreen() {
   const [storeName, setStoreName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [publishing, setPublishing] = useState(false);
+  // Errors show once a field was left (blur) or after trying to publish, not while typing.
+  const [touched, setTouched] = useState({ product: false, price: false });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverFieldError, setServerFieldError] = useState<ServerFieldError>(null);
   const [choice, setChoice] = useState<StoreChoice | null>(() => choiceFromParams(params));
 
   // The tab stays mounted: a later "+ Agregar oferta aquí" arrives as new params.
@@ -86,8 +102,26 @@ export default function ReportScreen() {
   const isComplete = product.trim() !== '' && Number(priceDigits) > 0 && hasStore;
   const canPublish = isComplete && !publishing;
 
-  const onPriceChange = (text: string) =>
+  const productError = validateProduct(product);
+  const priceError = validatePrice(Number(priceDigits));
+  const productMessage =
+    (serverFieldError?.field === 'product' && serverFieldError.message) ||
+    ((touched.product || submitAttempted) && productError) ||
+    null;
+  const priceMessage =
+    (serverFieldError?.field === 'price' && serverFieldError.message) ||
+    ((touched.price || submitAttempted) && priceError) ||
+    null;
+
+  const onProductChange = (text: string) => {
+    setProduct(text);
+    if (serverFieldError?.field === 'product') setServerFieldError(null);
+  };
+
+  const onPriceChange = (text: string) => {
     setPriceDigits(text.replace(/\D/g, '').replace(/^0+/, '').slice(0, MAX_PRICE_DIGITS));
+    if (serverFieldError?.field === 'price') setServerFieldError(null);
+  };
 
   /** Back to "pick a store": drops the preselected store and searches nearby again. */
   const clearStoreChoice = () => {
@@ -114,10 +148,18 @@ export default function ReportScreen() {
     photo.clearPhoto();
     location.clear();
     clearStoreChoice();
+    setTouched({ product: false, price: false });
+    setSubmitAttempted(false);
+    setServerFieldError(null);
   };
 
   const onPublish = async () => {
     if (!effectiveChoice) return;
+    // Same rules as submit_offer: show the messages under the fields instead of sending.
+    if (productError || priceError) {
+      setSubmitAttempted(true);
+      return;
+    }
     if (effectiveChoice.kind === 'new' && !offerCoords) {
       Alert.alert(
         'Falta la ubicación',
@@ -129,7 +171,7 @@ export default function ReportScreen() {
     setPublishing(true);
     try {
       await publishOffer({
-        product: product.trim(),
+        product: normalizeProductName(product),
         price: Number(priceDigits),
         category,
         store:
@@ -156,6 +198,14 @@ export default function ReportScreen() {
         // The chosen store was removed meanwhile: let the user pick again.
         clearStoreChoice();
         storesStore.refresh();
+      }
+      // Field-specific server errors also stay under the field; the form keeps what was typed.
+      if (error instanceof PublishError && error.code) {
+        if (PRODUCT_ERROR_CODES.has(error.code)) {
+          setServerFieldError({ field: 'product', message: error.message });
+        } else if (PRICE_ERROR_CODES.has(error.code)) {
+          setServerFieldError({ field: 'price', message: error.message });
+        }
       }
       Alert.alert(
         'No se pudo publicar',
@@ -185,14 +235,16 @@ export default function ReportScreen() {
               </ThemedText>
             </View>
 
-            <FormField label="Producto">
+            <FormField label="Producto" error={productMessage}>
               <FormTextInput
                 value={product}
-                onChangeText={setProduct}
+                onChangeText={onProductChange}
+                onBlur={() => setTouched((prev) => ({ ...prev, product: true }))}
                 placeholder="Ej: Pan amasado 1 kg"
                 autoCapitalize="sentences"
                 returnKeyType="next"
-                maxLength={80}
+                maxLength={PRODUCT_MAX_LENGTH}
+                style={productMessage ? { borderColor: theme.danger } : undefined}
               />
             </FormField>
 
@@ -205,13 +257,13 @@ export default function ReportScreen() {
               />
             </FormField>
 
-            <FormField label="Precio">
+            <FormField label="Precio" error={priceMessage}>
               <View
                 style={[
                   styles.priceBox,
                   {
                     backgroundColor: theme.backgroundElement,
-                    borderColor: theme.backgroundSelected,
+                    borderColor: priceMessage ? theme.danger : theme.backgroundSelected,
                   },
                 ]}>
                 <ThemedText style={[styles.priceText, styles.priceSymbol]} themeColor="textSecondary">
@@ -220,6 +272,7 @@ export default function ReportScreen() {
                 <TextInput
                   value={formatPrice(priceDigits)}
                   onChangeText={onPriceChange}
+                  onBlur={() => setTouched((prev) => ({ ...prev, price: true }))}
                   placeholder="0"
                   placeholderTextColor={theme.textSecondary}
                   selectionColor={theme.accent}

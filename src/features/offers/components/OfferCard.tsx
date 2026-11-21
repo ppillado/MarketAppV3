@@ -11,6 +11,7 @@ import { openDirections } from '@/lib/directions';
 import { formatDistance, formatPrice, formatTimeAgo } from '@/lib/format';
 import type { Offer } from '@/types/offer';
 
+import { TrustBadge } from './TrustBadge';
 import { VoteBar } from './VoteBar';
 
 type Props = {
@@ -49,6 +50,7 @@ export function OfferCard({ offer, distanceMeters, now, forYou = false }: Props)
                 </ThemedText>
               </View>
             )}
+            <TrustBadge offer={offer} />
           </View>
 
           <ThemedText style={[styles.price, { color: theme.accent }]}>

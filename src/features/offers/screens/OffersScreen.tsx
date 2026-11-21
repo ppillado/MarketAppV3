@@ -14,6 +14,7 @@ import { normalizeText } from '@/lib/text';
 import { OfferCard } from '../components/OfferCard';
 import { OffersToolbar, type OfferSort } from '../components/OffersToolbar';
 import { useOffers, type OfferWithDistance } from '../hooks/useOffers';
+import { useIsOfferHidden } from '../OfferVotesProvider';
 import { isFavoriteCategory, sortOffersForUser } from '../recommendOffers';
 
 const byRecent = (a: OfferWithDistance, b: OfferWithDistance) =>
@@ -40,6 +41,7 @@ export default function OffersScreen() {
   const [category, setCategory] = useState<OfferCategory | null>(null);
   const { withDistance, hasLocation, error, refreshing, refresh } = useOffers();
   const { favoriteCategories, isLoading: preferencesLoading } = usePreferences();
+  const isHidden = useIsOfferHidden();
 
   const onRefresh = async () => {
     await refresh();
@@ -51,6 +53,7 @@ export default function OffersScreen() {
   const search = normalizeText(query);
   const matching = withDistance.filter(
     ({ offer }) =>
+      !isHidden(offer) &&
       (category === null || offer.category === category) &&
       normalizeText(offer.product).includes(search),
   );

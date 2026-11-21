@@ -8,18 +8,32 @@ import { useTheme } from '@/hooks/use-theme';
 type FormFieldProps = {
   label: string;
   hint?: string;
+  /** Validation message; shown in red instead of the hint. */
+  error?: string | null;
   children: ReactNode;
 };
 
-export function FormField({ label, hint, children }: FormFieldProps) {
+export function FormField({ label, hint, error, children }: FormFieldProps) {
+  const theme = useTheme();
+
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold">{label}</ThemedText>
       {children}
-      {hint && (
-        <ThemedText type="small" themeColor="textSecondary">
-          {hint}
+      {error ? (
+        <ThemedText
+          type="small"
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={{ color: theme.danger }}>
+          {error}
         </ThemedText>
+      ) : (
+        hint && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {hint}
+          </ThemedText>
+        )
       )}
     </View>
   );

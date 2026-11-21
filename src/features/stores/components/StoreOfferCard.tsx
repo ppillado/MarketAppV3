@@ -5,6 +5,7 @@ import { CategoryPill } from '@/components/category-pill';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { TrustBadge } from '@/features/offers/components/TrustBadge';
 import { VoteBar } from '@/features/offers/components/VoteBar';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPrice, formatTimeAgo } from '@/lib/format';
@@ -45,7 +46,10 @@ export function StoreOfferCard({ offer, fetchedAt, now }: Props) {
               {formatTimeAgo(offer.createdAt, now)}
             </ThemedText>
           </View>
-          <CategoryPill category={offer.category} />
+          <View style={styles.pills}>
+            <CategoryPill category={offer.category} />
+            <TrustBadge offer={offer} fetchedAt={fetchedAt} />
+          </View>
           <ThemedText style={[styles.price, { color: theme.accent }]}>
             ${formatPrice(offer.price)}
           </ThemedText>
@@ -82,6 +86,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.three,
+  },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
   },
   product: {
     flex: 1,

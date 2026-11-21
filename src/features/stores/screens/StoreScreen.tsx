@@ -15,6 +15,7 @@ import {
 } from '@/constants/categories';
 import { Spacing } from '@/constants/theme';
 import { useUserLocation } from '@/features/location/LocationProvider';
+import { useIsOfferHidden } from '@/features/offers/OfferVotesProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { openDirections } from '@/lib/directions';
 import { formatDistance } from '@/lib/format';
@@ -33,6 +34,7 @@ export default function StoreScreen() {
   const { stores } = useStoresStore();
   const store = stores.find((candidate) => candidate.id === params.id) ?? null;
   const { state, reload } = useStoreOffers(store);
+  const isHidden = useIsOfferHidden();
   // Fixed reference time, so "hace X min" stays consistent while scrolling.
   const [now] = useState(() => Date.now());
   // Opens on the map's category filter, if any; "Todas" shows every offer of the store.
@@ -51,7 +53,11 @@ export default function StoreScreen() {
     );
   }
 
-  const allOffers = state.status === 'done' ? state.offers : [];
+  // Offers the user's vote just hid (server rule) leave the list right away.
+  const allOffers =
+    state.status === 'done'
+      ? state.offers.filter((offer) => !isHidden(offer, state.fetchedAt))
+      : [];
   const offers = category ? allOffers.filter((offer) => offer.category === category) : allOffers;
   // Chips only for the categories this store actually has (plus the active filter).
   const storeCategories = CATEGORIES.filter(
@@ -73,7 +79,7 @@ export default function StoreScreen() {
           <>
             <StoreHeader
               store={store}
-              offersCount={state.status === 'done' ? state.offers.length : store.activeOffersCount}
+              offersCount={state.status === 'done' ? allOffers.length : store.activeOffersCount}
             />
             {showFilter && (
               <View style={styles.filter}>

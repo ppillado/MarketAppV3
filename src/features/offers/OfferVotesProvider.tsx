@@ -1,9 +1,11 @@
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 
+import { useStoresStore } from '@/features/stores/StoresProvider';
 import { supabase } from '@/lib/supabase';
 import type { Offer } from '@/types/offer';
 
+import { shouldHideOffer } from './offerTrust';
 import { useOffersStore } from './OffersProvider';
 import {
   fetchMyVotes,
@@ -17,8 +19,11 @@ import {
 
 export type { Vote } from './votesApi';
 
-/** Counters returned by set_offer_vote, newer than the offers list until it refreshes. */
-type CountsOverride = VoteCounts & { at: number };
+/**
+ * Counters after the user's vote, newer than the offers list until it refreshes.
+ * `confirmed`: they come from set_offer_vote's response (not the optimistic guess).
+ */
+type CountsOverride = VoteCounts & { at: number; confirmed: boolean };
 
 type OfferVotes = {
   votes: Record<string, Vote>;
@@ -42,6 +47,8 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
   const [votes, setVotes] = useState<Record<string, Vote>>(readCachedVotes);
   const [counts, setCounts] = useState<Record<string, CountsOverride>>({});
   const [pending, setPending] = useState<Record<string, true>>({});
+  const { refresh: refreshOffers } = useOffersStore();
+  const { refresh: refreshStores } = useStoresStore();
 
   // Sync with the server copy (e.g. after reinstalling, or votes made on another session).
   useEffect(() => {
@@ -72,10 +79,15 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
         updateVotes(({ [offer.id]: _, ...rest }) =>
           value ? { ...rest, [offer.id]: value } : rest,
         );
-      const setOfferCounts = (value: VoteCounts) =>
+      const setOfferCounts = (value: VoteCounts, confirmed = false) =>
         setCounts((prev) => ({
           ...prev,
-          [offer.id]: { ...value, at: Date.now() },
+          [offer.id]: {
+            confirmations: value.confirmations,
+            reports: value.reports,
+            at: Date.now(),
+            confirmed,
+          },
         }));
 
       // Optimistic update.
@@ -90,17 +102,33 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
 
       setPending((prev) => ({ ...prev, [offer.id]: true }));
       setOfferVote(offer.id, next)
-        .then(setOfferCounts, (error) => {
-          setVote(previous);
-          setOfferCounts(shown);
-          Alert.alert(
-            'No se registró tu voto',
-            error instanceof VoteError ? error.message : 'Ocurrió un error inesperado.',
-          );
-        })
+        .then(
+          (result) => {
+            setOfferCounts(result, true);
+            // The server hid it (same rule): lists drop it now via useIsOfferHidden, and the
+            // background refresh updates the store pins' counts and categories.
+            if (shouldHideOffer(result.confirmations, result.reports)) {
+              Alert.alert(
+                'Oferta ocultada',
+                'Oferta ocultada por reportes de la comunidad. Gracias por avisar a tus vecinos.',
+              );
+              refreshOffers();
+              refreshStores();
+            }
+          },
+          (error) => {
+            // Back to what was shown before (e.g. cannot_vote_own_offer, network errors).
+            setVote(previous);
+            setOfferCounts(shown);
+            Alert.alert(
+              'No se registró tu voto',
+              error instanceof VoteError ? error.message : 'Ocurrió un error inesperado.',
+            );
+          },
+        )
         .finally(() => setPending(({ [offer.id]: _, ...rest }) => rest));
     },
-    [votes, updateVotes],
+    [votes, updateVotes, refreshOffers, refreshStores],
   );
 
   const syncVotes = useCallback(
@@ -155,6 +183,30 @@ export function useOfferVote(offer: Offer, fetchedAt?: number) {
     pending: Boolean(context.pending[offer.id]),
     toggle: (vote: Vote) => context.toggleVote(offer, vote, shown),
   };
+}
+
+/**
+ * `isHidden(offer, fetchedAt?)`: true when the user's last vote (confirmed by the server, and
+ * newer than this copy of the offer) left it meeting the server's hide rule. A newer list from
+ * the server always wins, so an offer that becomes visible again comes back on refresh.
+ */
+export function useIsOfferHidden() {
+  const context = use(OfferVotesContext);
+  if (!context) throw new Error('useIsOfferHidden must be used inside <OfferVotesProvider>');
+  const { updatedAt } = useOffersStore();
+  const { counts } = context;
+
+  return useCallback(
+    (offer: Offer, fetchedAt?: number) => {
+      const override = counts[offer.id];
+      return Boolean(
+        override?.confirmed &&
+          override.at > (fetchedAt ?? updatedAt ?? 0) &&
+          shouldHideOffer(override.confirmations, override.reports),
+      );
+    },
+    [counts, updatedAt],
+  );
 }
 
 /** How many offers the current user has voted on. */
