@@ -25,6 +25,8 @@ type OfferVotes = {
   counts: Record<string, CountsOverride>;
   pending: Record<string, true>;
   toggleVote: (offer: Offer, vote: Vote, shown: VoteCounts) => void;
+  /** Merges the server's votes for these offers (e.g. from get_store_offers). */
+  syncVotes: (offerIds: string[], serverVotes: Record<string, Vote>) => void;
 };
 
 const OfferVotesContext = createContext<OfferVotes | null>(null);
@@ -101,21 +103,49 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
     [votes, updateVotes],
   );
 
+  const syncVotes = useCallback(
+    (offerIds: string[], serverVotes: Record<string, Vote>) => {
+      if (offerIds.length === 0) return;
+      updateVotes((prev) => {
+        const next = { ...prev };
+        for (const id of offerIds) {
+          if (serverVotes[id]) next[id] = serverVotes[id];
+          else delete next[id];
+        }
+        return next;
+      });
+    },
+    [updateVotes],
+  );
+
   return (
-    <OfferVotesContext value={{ votes, counts, pending, toggleVote }}>{children}</OfferVotesContext>
+    <OfferVotesContext value={{ votes, counts, pending, toggleVote, syncVotes }}>
+      {children}
+    </OfferVotesContext>
   );
 }
 
-/** Vote state for one offer, with counts that include the current user's vote. */
-export function useOfferVote(offer: Offer) {
+/** Merges server votes for a set of offers into the shared vote state. */
+export function useSyncVotes() {
+  const context = use(OfferVotesContext);
+  if (!context) throw new Error('useSyncVotes must be used inside <OfferVotesProvider>');
+  return context.syncVotes;
+}
+
+/**
+ * Vote state for one offer, with counts that include the current user's vote.
+ * `fetchedAt`: when `offer` was loaded, if not from the shared offers list (e.g. a store's
+ * offers); defaults to the offers list's last update.
+ */
+export function useOfferVote(offer: Offer, fetchedAt?: number) {
   const context = use(OfferVotesContext);
   if (!context) throw new Error('useOfferVote must be used inside <OfferVotesProvider>');
   const { updatedAt } = useOffersStore();
 
   const override = context.counts[offer.id];
-  // Use the vote response until a newer offers list arrives from the server.
+  // Use the vote response until a newer copy of the offer arrives from the server.
   const shown: VoteCounts =
-    override && override.at > (updatedAt ?? 0)
+    override && override.at > (fetchedAt ?? updatedAt ?? 0)
       ? override
       : { confirmations: offer.confirmations, reports: offer.reports };
 

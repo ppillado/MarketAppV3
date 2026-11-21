@@ -4,17 +4,29 @@ import type { Coords } from '@/types/geo';
 
 const PHOTO_BUCKET = 'offer-photos';
 
+/** Where the offer is: an existing store, or a new one created together with the offer. */
+export type OfferStore =
+  | { id: string }
+  | { id: null; name: string; address: string | null; coords: Coords };
+
 export type NewOffer = {
   product: string;
   price: number;
-  storeName: string;
-  coords: Coords;
+  store: OfferStore;
   /** Local file URI from the image picker. */
   photoUri: string | null;
 };
 
 /** User-facing error from publishing (server validation messages are already in Spanish). */
-export class PublishError extends Error {}
+export class PublishError extends Error {
+  /** submit_offer's `hint` code (e.g. 'store_not_found'), when the server rejected the offer. */
+  readonly code: string | null;
+
+  constructor(message: string, code: string | null = null) {
+    super(message);
+    this.code = code;
+  }
+}
 
 /**
  * Publishes an offer: uploads the photo (if any) to the user's own Storage folder, then calls
@@ -28,20 +40,28 @@ export async function publishOffer(offer: NewOffer): Promise<string> {
   });
   const photoUrl = offer.photoUri ? await uploadPhoto(offer.photoUri, userId) : null;
 
+  const { store } = offer;
   const { data, error } = await supabase.rpc('submit_offer', {
     p_product: offer.product,
     p_price: offer.price,
-    p_store_name: offer.storeName,
-    p_lat: offer.coords.latitude,
-    p_lng: offer.coords.longitude,
     p_photo_url: photoUrl,
+    // An existing store gives the offer its name and location; otherwise a new store is created.
+    ...(store.id !== null
+      ? { p_store_id: store.id }
+      : {
+          p_store_id: null,
+          p_store_name: store.name,
+          p_store_address: store.address,
+          p_lat: store.coords.latitude,
+          p_lng: store.coords.longitude,
+        }),
   });
 
   if (error) {
     // Validation errors raised by submit_offer carry a hint code and a Spanish message.
-    throw new PublishError(
-      error.hint ? error.message : 'No pudimos publicar la oferta. Revisa tu conexión.',
-    );
+    throw error.hint
+      ? new PublishError(error.message, error.hint)
+      : new PublishError('No pudimos publicar la oferta. Revisa tu conexión.');
   }
   return data as string;
 }

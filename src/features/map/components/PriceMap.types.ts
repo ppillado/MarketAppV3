@@ -1,7 +1,7 @@
 import type { Ref } from 'react';
 
 import type { Coords } from '@/types/geo';
-import type { Offer } from '@/types/offer';
+import type { Store } from '@/types/store';
 
 export type PriceMapHandle = {
   centerOn: (coords: Coords) => void;
@@ -10,7 +10,6 @@ export type PriceMapHandle = {
 export type PriceMapProps = {
   ref?: Ref<PriceMapHandle>;
   showsUserLocation: boolean;
-  offers: Offer[];
-  selectedOfferId: string | null;
-  onSelectOffer: (offer: Offer | null) => void;
+  stores: Store[];
+  onSelectStore: (store: Store) => void;
 };

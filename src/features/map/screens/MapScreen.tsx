@@ -1,5 +1,6 @@
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,8 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useUserLocation } from '@/features/location/LocationProvider';
-import { OfferCard } from '@/features/offers/components/OfferCard';
-import { useOffers } from '@/features/offers/hooks/useOffers';
+import { useStoresStore } from '@/features/stores/StoresProvider';
 import { useTheme } from '@/hooks/use-theme';
 
 import { LocationPermissionBanner } from '../components/LocationPermissionBanner';
@@ -21,11 +21,7 @@ export default function MapScreen() {
   const mapRef = useRef<PriceMapHandle>(null);
   const location = useUserLocation();
   const hasCentered = useRef(false);
-  const { offers, withDistance } = useOffers();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [now] = useState(() => Date.now());
-
-  const selected = withDistance.find(({ offer }) => offer.id === selectedId) ?? null;
+  const { stores } = useStoresStore();
 
   // Center on the user the first time we get a fix; afterwards the user controls the camera.
   useEffect(() => {
@@ -45,9 +41,10 @@ export default function MapScreen() {
       <PriceMap
         ref={mapRef}
         showsUserLocation={location.granted}
-        offers={offers}
-        selectedOfferId={selectedId}
-        onSelectOffer={(offer) => setSelectedId(offer?.id ?? null)}
+        stores={stores}
+        onSelectStore={(store) =>
+          router.push({ pathname: '/store/[id]', params: { id: store.id } })
+        }
       />
 
       <View
@@ -80,11 +77,7 @@ export default function MapScreen() {
           </ThemedView>
         )}
 
-        {selected && (
-          <OfferCard offer={selected.offer} distanceMeters={selected.distanceMeters} now={now} />
-        )}
-
-        {location.denied && !selected && (
+        {location.denied && (
           <LocationPermissionBanner
             canAskAgain={location.canAskAgain}
             onRetry={location.request}

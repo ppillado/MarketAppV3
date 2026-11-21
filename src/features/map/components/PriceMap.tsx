@@ -5,25 +5,19 @@ import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { GRAN_CONCEPCION_REGION, USER_REGION_DELTA, type MapRegion } from '../constants';
-import { useOfferClusters } from '../hooks/useOfferClusters';
+import { useStoreClusters } from '../hooks/useStoreClusters';
 import { ClusterPin } from './ClusterPin';
 import type { PriceMapProps } from './PriceMap.types';
-import { PricePin } from './PricePin';
+import { StorePin } from './StorePin';
 
 // Google Maps on Android, Apple Maps on iOS (no iOS Google key needed).
 const MAP_PROVIDER = Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT;
 
-export function PriceMap({
-  ref,
-  showsUserLocation,
-  offers,
-  selectedOfferId,
-  onSelectOffer,
-}: PriceMapProps) {
+export function PriceMap({ ref, showsUserLocation, stores, onSelectStore }: PriceMapProps) {
   const mapRef = useRef<MapView>(null);
   const scheme = useColorScheme();
   const [region, setRegion] = useState<MapRegion>(GRAN_CONCEPCION_REGION);
-  const { items, expansionDelta } = useOfferClusters(offers, region);
+  const { items, expansionDelta } = useStoreClusters(stores, region);
 
   const animateTo = (region: MapRegion) => mapRef.current?.animateToRegion(region, 600);
 
@@ -46,11 +40,7 @@ export function PriceMap({
       showsUserLocation={showsUserLocation}
       showsMyLocationButton={false}
       toolbarEnabled={false}
-      onRegionChangeComplete={setRegion}
-      onPress={(event) => {
-        // iOS also reports marker taps here; only a tap on empty map deselects.
-        if (event.nativeEvent.action !== 'marker-press') onSelectOffer(null);
-      }}>
+      onRegionChangeComplete={setRegion}>
       {items.map((item) => {
         if (item.kind === 'cluster') {
           return (
@@ -67,13 +57,11 @@ export function PriceMap({
             />
           );
         }
-        const selected = item.offer.id === selectedOfferId;
         return (
-          <PricePin
-            key={`${item.offer.id}-${selected}-${scheme}`}
-            offer={item.offer}
-            selected={selected}
-            onPress={() => onSelectOffer(item.offer)}
+          <StorePin
+            key={`${item.store.id}-${item.store.activeOffersCount}-${scheme}`}
+            store={item.store}
+            onPress={() => onSelectStore(item.store)}
           />
         );
       })}

@@ -8,8 +8,8 @@ import type { Offer } from '@/types/offer';
 import { useOfferVote } from '../OfferVotesProvider';
 
 /** Discreet community validation: "👍 Confirmar" / "👎 Agotado/Error". */
-export function VoteBar({ offer }: { offer: Offer }) {
-  const { myVote, confirmations, reports, pending, toggle } = useOfferVote(offer);
+export function VoteBar({ offer, fetchedAt }: { offer: Offer; fetchedAt?: number }) {
+  const { myVote, confirmations, reports, pending, toggle } = useOfferVote(offer, fetchedAt);
 
   return (
     <View style={styles.row}>

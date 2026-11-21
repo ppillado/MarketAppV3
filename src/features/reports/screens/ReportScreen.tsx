@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import {
@@ -20,46 +20,101 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useUserLocation } from '@/features/location/LocationProvider';
 import { useOffersStore } from '@/features/offers/OffersProvider';
+import { useNearbyStoreSearch } from '@/features/stores/hooks/useNearbyStoreSearch';
+import { useStoresStore } from '@/features/stores/StoresProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPrice } from '@/lib/format';
 
 import { FormField, FormTextInput } from '../components/FormField';
-import { useCurrentLocation } from '../hooks/useCurrentLocation';
+import { NearbyStorePicker } from '../components/NearbyStorePicker';
+import { useCurrentLocation, type CurrentLocationState } from '../hooks/useCurrentLocation';
 import { usePhotoPicker } from '../hooks/usePhotoPicker';
 import { PublishError, publishOffer } from '../reportsApi';
 
 const MAX_PRICE_DIGITS = 7; // up to $9.999.999 CLP
 
+/** The store the offer goes to: an existing one (sends p_store_id) or a new one. */
+type StoreChoice = { kind: 'existing'; id: string; name: string; address: string | null } | { kind: 'new' };
+
+/** Params set by "+ Agregar oferta aquí" in a store's sheet. */
+type ReportParams = { storeId?: string; storeName?: string };
+
+const choiceFromParams = ({ storeId, storeName }: ReportParams): StoreChoice | null =>
+  storeId && storeName ? { kind: 'existing', id: storeId, name: storeName, address: null } : null;
+
 export default function ReportScreen() {
   const theme = useTheme();
+  const params = useLocalSearchParams<ReportParams>();
   const location = useCurrentLocation();
   const liveLocation = useUserLocation();
   const offersStore = useOffersStore();
+  const storesStore = useStoresStore();
   const photo = usePhotoPicker();
   const [product, setProduct] = useState('');
   const [priceDigits, setPriceDigits] = useState('');
-  const [store, setStore] = useState('');
+  const [storeName, setStoreName] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [choice, setChoice] = useState<StoreChoice | null>(() => choiceFromParams(params));
 
-  const isComplete = product.trim() !== '' && Number(priceDigits) > 0 && store.trim() !== '';
-  const canPublish = isComplete && !publishing;
+  // The tab stays mounted: a later "+ Agregar oferta aquí" arrives as new params.
+  const [seenStoreParam, setSeenStoreParam] = useState(params.storeId);
+  if (params.storeId !== seenStoreParam) {
+    setSeenStoreParam(params.storeId);
+    const fromParams = choiceFromParams(params);
+    if (fromParams) setChoice(fromParams);
+  }
+
   // The offer is pinned where it was reported: the attached location, or else the live GPS fix.
   const offerCoords =
     location.state.status === 'done' ? location.state.coords : liveLocation.coords;
+  const nearby = useNearbyStoreSearch(offerCoords, choice?.kind !== 'existing');
+
+  // Nothing nearby to pick from: creating a new store is the only option.
+  const noStoresToPick =
+    nearby.search.status === 'no-location' ||
+    nearby.search.status === 'error' ||
+    (nearby.search.status === 'done' && nearby.search.stores.length === 0);
+  const effectiveChoice: StoreChoice | null = choice ?? (noStoresToPick ? { kind: 'new' } : null);
+
+  const hasStore =
+    effectiveChoice?.kind === 'existing' ||
+    (effectiveChoice?.kind === 'new' && storeName.trim() !== '');
+  const isComplete = product.trim() !== '' && Number(priceDigits) > 0 && hasStore;
+  const canPublish = isComplete && !publishing;
 
   const onPriceChange = (text: string) =>
     setPriceDigits(text.replace(/\D/g, '').replace(/^0+/, '').slice(0, MAX_PRICE_DIGITS));
 
+  /** Back to "pick a store": drops the preselected store and searches nearby again. */
+  const clearStoreChoice = () => {
+    setChoice(null);
+    if (params.storeId) router.setParams({ storeId: undefined, storeName: undefined });
+    nearby.retry();
+  };
+
+  const onAttachLocation = async () => {
+    const result = await location.locate();
+    if (result.status !== 'done') return;
+    // Suggest the street as the new store's address, without overwriting what was typed.
+    if (result.address) setStoreAddress((current) => current || result.address || '');
+    // Stores near the attached position, which may differ from the live GPS fix.
+    nearby.retry();
+  };
+
   const resetForm = () => {
     setProduct('');
     setPriceDigits('');
-    setStore('');
+    setStoreName('');
+    setStoreAddress('');
     photo.clearPhoto();
     location.clear();
+    clearStoreChoice();
   };
 
   const onPublish = async () => {
-    if (!offerCoords) {
+    if (!effectiveChoice) return;
+    if (effectiveChoice.kind === 'new' && !offerCoords) {
       Alert.alert(
         'Falta la ubicación',
         'Toca el ícono de ubicación junto al local para indicar dónde está la oferta.',
@@ -72,17 +127,31 @@ export default function ReportScreen() {
       await publishOffer({
         product: product.trim(),
         price: Number(priceDigits),
-        storeName: store.trim(),
-        coords: offerCoords,
+        store:
+          effectiveChoice.kind === 'existing'
+            ? { id: effectiveChoice.id }
+            : {
+                id: null,
+                name: storeName.trim(),
+                address: storeAddress.trim() || null,
+                coords: offerCoords!,
+              },
         photoUri: photo.photoUri,
       });
       resetForm();
+      // New pin, or a higher offer count on the store's pin.
+      storesStore.refresh();
       offersStore.refresh();
       Alert.alert('¡Oferta publicada!', 'Gracias por ayudar a tus vecinos a comprar más barato.', [
         { text: 'Ver en el mapa', onPress: () => router.navigate('/') },
         { text: 'Reportar otra', style: 'cancel' },
       ]);
     } catch (error) {
+      if (error instanceof PublishError && error.code === 'store_not_found') {
+        // The chosen store was removed meanwhile: let the user pick again.
+        clearStoreChoice();
+        storesStore.refresh();
+      }
       Alert.alert(
         'No se pudo publicar',
         error instanceof PublishError ? error.message : 'Ocurrió un error inesperado.',
@@ -148,42 +217,109 @@ export default function ReportScreen() {
               </View>
             </FormField>
 
-            <FormField label="Local o supermercado" hint={locationHint(location.state)}>
-              <View style={styles.storeRow}>
-                <FormTextInput
-                  value={store}
-                  onChangeText={setStore}
-                  placeholder="Ej: Almacén Don Pedro"
-                  autoCapitalize="words"
-                  maxLength={80}
-                  style={styles.flex}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Usar mi ubicación actual"
-                  onPress={location.locate}
-                  disabled={location.state.status === 'loading'}
-                  style={({ pressed }) => [
-                    styles.locationButton,
-                    {
-                      backgroundColor:
-                        location.state.status === 'done' ? theme.accent : theme.backgroundElement,
-                      borderColor: theme.backgroundSelected,
-                    },
-                    pressed && styles.pressed,
+            {effectiveChoice?.kind === 'existing' ? (
+              <FormField label="Local o supermercado">
+                <View
+                  style={[
+                    styles.selectedStore,
+                    { backgroundColor: `${theme.accent}1A`, borderColor: theme.accent },
                   ]}>
-                  {location.state.status === 'loading' ? (
-                    <ActivityIndicator color={theme.text} />
-                  ) : (
-                    <SymbolView
-                      name={{ ios: 'location.fill', android: 'my_location', web: 'my_location' }}
-                      tintColor={location.state.status === 'done' ? theme.onAccent : theme.text}
-                      size={22}
-                    />
-                  )}
-                </Pressable>
-              </View>
-            </FormField>
+                  <SymbolView
+                    name={{ ios: 'storefront.fill', android: 'storefront', web: 'storefront' }}
+                    tintColor={theme.accent}
+                    size={22}
+                  />
+                  <View style={styles.flex}>
+                    <ThemedText type="smallBold" numberOfLines={2}>
+                      {effectiveChoice.name}
+                    </ThemedText>
+                    {effectiveChoice.address && (
+                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                        {effectiveChoice.address}
+                      </ThemedText>
+                    )}
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Cambiar de local"
+                    onPress={clearStoreChoice}
+                    hitSlop={8}
+                    style={({ pressed }) => pressed && styles.pressed}>
+                    <ThemedText type="smallBold" style={{ color: theme.accent }}>
+                      Cambiar
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </FormField>
+            ) : (
+              <FormField label="Local o supermercado">
+                <NearbyStorePicker
+                  search={nearby.search}
+                  selected={effectiveChoice?.kind === 'new' ? 'new' : null}
+                  onSelectStore={(store) =>
+                    setChoice({
+                      kind: 'existing',
+                      id: store.id,
+                      name: store.name,
+                      address: store.address,
+                    })
+                  }
+                  onCreateNew={() => setChoice({ kind: 'new' })}
+                  onRetry={nearby.retry}
+                />
+              </FormField>
+            )}
+
+            {effectiveChoice?.kind === 'new' && (
+              <>
+              <FormField label="Nombre del nuevo local" hint={locationHint(location.state)}>
+                <View style={styles.storeRow}>
+                  <FormTextInput
+                    value={storeName}
+                    onChangeText={setStoreName}
+                    placeholder="Ej: Almacén Don Pedro"
+                    autoCapitalize="words"
+                    maxLength={80}
+                    style={styles.flex}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Usar mi ubicación actual"
+                    onPress={onAttachLocation}
+                    disabled={location.state.status === 'loading'}
+                    style={({ pressed }) => [
+                      styles.locationButton,
+                      {
+                        backgroundColor:
+                          location.state.status === 'done' ? theme.accent : theme.backgroundElement,
+                        borderColor: theme.backgroundSelected,
+                      },
+                      pressed && styles.pressed,
+                    ]}>
+                    {location.state.status === 'loading' ? (
+                      <ActivityIndicator color={theme.text} />
+                    ) : (
+                      <SymbolView
+                        name={{ ios: 'location.fill', android: 'my_location', web: 'my_location' }}
+                        tintColor={location.state.status === 'done' ? theme.onAccent : theme.text}
+                        size={22}
+                      />
+                    )}
+                  </Pressable>
+                </View>
+              </FormField>
+  
+              <FormField label="Dirección (opcional)">
+                <FormTextInput
+                  value={storeAddress}
+                  onChangeText={setStoreAddress}
+                  placeholder="Ej: O'Higgins 1234, Concepción"
+                  autoCapitalize="words"
+                  maxLength={160}
+                />
+              </FormField>
+              </>
+            )}
 
             <FormField label="Foto (opcional)">
               {photo.photoUri ? (
@@ -263,7 +399,7 @@ export default function ReportScreen() {
   );
 }
 
-function locationHint(state: ReturnType<typeof useCurrentLocation>['state']) {
+function locationHint(state: CurrentLocationState) {
   switch (state.status) {
     case 'idle':
       return 'Toca el ícono para usar mi ubicación actual.';
@@ -318,6 +454,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 0,
     fontVariant: ['tabular-nums'],
+  },
+  selectedStore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    minHeight: 56,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
   },
   storeRow: {
     flexDirection: 'row',

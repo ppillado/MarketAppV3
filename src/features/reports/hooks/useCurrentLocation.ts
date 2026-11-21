@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 
 import type { Coords } from '@/types/geo';
 
-type CurrentLocationState =
+export type CurrentLocationState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'done'; coords: Coords; address: string | null }
@@ -13,18 +13,22 @@ type CurrentLocationState =
 export function useCurrentLocation() {
   const [state, setState] = useState<CurrentLocationState>({ status: 'idle' });
 
-  const locate = useCallback(async () => {
+  /** Resolves with the final state (done or error). */
+  const locate = useCallback(async (): Promise<CurrentLocationState> => {
+    const finish = (next: CurrentLocationState) => {
+      setState(next);
+      return next;
+    };
     setState({ status: 'loading' });
 
     const permission = await Location.requestForegroundPermissionsAsync();
     if (!permission.granted) {
-      setState({
+      return finish({
         status: 'error',
         message: permission.canAskAgain
           ? 'Necesitamos tu permiso de ubicación para ubicar el local.'
           : 'Activa la ubicación para MarketApp en Ajustes.',
       });
-      return;
     }
 
     try {
@@ -35,9 +39,9 @@ export function useCurrentLocation() {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       };
-      setState({ status: 'done', coords, address: await reverseGeocode(coords) });
+      return finish({ status: 'done', coords, address: await reverseGeocode(coords) });
     } catch {
-      setState({
+      return finish({
         status: 'error',
         message: 'No pudimos obtener tu ubicación. Revisa que el GPS esté activado.',
       });
