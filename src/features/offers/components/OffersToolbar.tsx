@@ -7,9 +7,10 @@ import type { OfferCategory } from '@/constants/categories';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export type OfferSort = 'recent' | 'price' | 'distance';
+export type OfferSort = 'forYou' | 'recent' | 'price' | 'distance';
 
 const SORT_OPTIONS: { value: OfferSort; label: string }[] = [
+  { value: 'forYou', label: '★ Para ti' },
   { value: 'recent', label: 'Más recientes' },
   { value: 'price', label: 'Menor precio' },
   { value: 'distance', label: 'Más cercano' },

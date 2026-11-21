@@ -79,15 +79,46 @@ export function CategoryChips({
   );
 }
 
+/** Multi-choice category chips (wrapping rows), e.g. the user's favorite categories. */
+export function MultiCategoryChips({
+  value,
+  onToggle,
+  options = CATEGORIES,
+  accessibilityLabel = 'Categorías',
+}: {
+  value: readonly OfferCategory[];
+  onToggle: (category: OfferCategory) => void;
+  options?: readonly CategoryInfo[];
+  accessibilityLabel?: string;
+}) {
+  return (
+    <View accessibilityLabel={accessibilityLabel} style={styles.wrap}>
+      {options.map((category) => (
+        <Chip
+          key={category.id}
+          label={`${category.emoji} ${category.label}`}
+          selected={value.includes(category.id)}
+          floating={false}
+          multiple
+          onPress={() => onToggle(category.id)}
+        />
+      ))}
+    </View>
+  );
+}
+
 function Chip({
   label,
   selected,
   floating,
+  multiple = false,
   onPress,
 }: {
   label: string;
   selected: boolean;
   floating: boolean;
+  /** Checkbox semantics (multi-select) instead of radio. */
+  multiple?: boolean;
   onPress: () => void;
 }) {
   const theme = useTheme();
@@ -97,8 +128,8 @@ function Chip({
 
   return (
     <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
+      accessibilityRole={multiple ? 'checkbox' : 'radio'}
+      accessibilityState={multiple ? { checked: selected } : { selected }}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,

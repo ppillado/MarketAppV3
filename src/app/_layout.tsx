@@ -6,6 +6,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LocationProvider } from '@/features/location/LocationProvider';
 import { OfferVotesProvider } from '@/features/offers/OfferVotesProvider';
 import { OffersProvider } from '@/features/offers/OffersProvider';
+import { PreferencesProvider } from '@/features/preferences/PreferencesProvider';
 import { StoresProvider } from '@/features/stores/StoresProvider';
 
 SplashScreen.preventAutoHideAsync();
@@ -18,20 +19,22 @@ export default function RootLayout() {
         <OffersProvider>
           <StoresProvider>
             <OfferVotesProvider>
-              <AnimatedSplashOverlay />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen
-                  name="store/[id]"
-                  options={{
-                    // Native bottom sheet over the map: half height, drag up to full.
-                    presentation: 'formSheet',
-                    sheetAllowedDetents: [0.6, 1],
-                    sheetGrabberVisible: true,
-                    sheetCornerRadius: 24,
-                  }}
-                />
-              </Stack>
+              <PreferencesProvider>
+                <AnimatedSplashOverlay />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen
+                    name="store/[id]"
+                    options={{
+                      // Native bottom sheet over the map: half height, drag up to full.
+                      presentation: 'formSheet',
+                      sheetAllowedDetents: [0.6, 1],
+                      sheetGrabberVisible: true,
+                      sheetCornerRadius: 24,
+                    }}
+                  />
+                </Stack>
+              </PreferencesProvider>
             </OfferVotesProvider>
           </StoresProvider>
         </OffersProvider>

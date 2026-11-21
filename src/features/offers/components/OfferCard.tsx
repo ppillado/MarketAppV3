@@ -18,9 +18,11 @@ type Props = {
   /** Null while the user's position is unknown (hides the distance). */
   distanceMeters: number | null;
   now: number;
+  /** Shows a "★ Para ti" tag (offer in one of the user's favorite categories). */
+  forYou?: boolean;
 };
 
-export function OfferCard({ offer, distanceMeters, now }: Props) {
+export function OfferCard({ offer, distanceMeters, now, forYou = false }: Props) {
   const theme = useTheme();
 
   return (
@@ -38,7 +40,16 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
             </ThemedText>
           </View>
 
-          <CategoryPill category={offer.category} />
+          <View style={styles.pills}>
+            <CategoryPill category={offer.category} />
+            {forYou && (
+              <View style={[styles.forYouPill, { backgroundColor: `${theme.accent}1F` }]}>
+                <ThemedText type="small" style={[styles.forYouText, { color: theme.accent }]}>
+                  ★ Para ti
+                </ThemedText>
+              </View>
+            )}
+          </View>
 
           <ThemedText style={[styles.price, { color: theme.accent }]}>
             ${formatPrice(offer.price)}
@@ -134,6 +145,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.three,
+  },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
+  },
+  forYouPill: {
+    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 999,
+  },
+  forYouText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: 600,
   },
   product: {
     flex: 1,

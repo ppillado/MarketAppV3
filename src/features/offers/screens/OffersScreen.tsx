@@ -1,22 +1,28 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getCategoryLabel, type OfferCategory } from '@/constants/categories';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { usePreferences } from '@/features/preferences/PreferencesProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { normalizeText } from '@/lib/text';
 
 import { OfferCard } from '../components/OfferCard';
 import { OffersToolbar, type OfferSort } from '../components/OffersToolbar';
 import { useOffers, type OfferWithDistance } from '../hooks/useOffers';
+import { isFavoriteCategory, sortOffersForUser } from '../recommendOffers';
 
 const byRecent = (a: OfferWithDistance, b: OfferWithDistance) =>
   b.offer.createdAt.getTime() - a.offer.createdAt.getTime();
 
-const COMPARATORS: Record<OfferSort, (a: OfferWithDistance, b: OfferWithDistance) => number> = {
+const COMPARATORS: Record<
+  Exclude<OfferSort, 'forYou'>,
+  (a: OfferWithDistance, b: OfferWithDistance) => number
+> = {
   recent: byRecent,
   price: (a, b) => a.offer.price - b.offer.price || byRecent(a, b),
   distance: (a, b) =>
@@ -33,6 +39,7 @@ export default function OffersScreen() {
   const [sort, setSort] = useState<OfferSort>('recent');
   const [category, setCategory] = useState<OfferCategory | null>(null);
   const { withDistance, hasLocation, error, refreshing, refresh } = useOffers();
+  const { favoriteCategories, isLoading: preferencesLoading } = usePreferences();
 
   const onRefresh = async () => {
     await refresh();
@@ -42,14 +49,18 @@ export default function OffersScreen() {
   // Without a GPS fix there is nothing to sort by distance; fall back to recency.
   const effectiveSort = sort === 'distance' && !hasLocation ? 'recent' : sort;
   const search = normalizeText(query);
-  const visible = withDistance
-    .filter(
-      ({ offer }) =>
-        (category === null || offer.category === category) &&
-        normalizeText(offer.product).includes(search),
-    )
-    .sort(COMPARATORS[effectiveSort]);
+  const matching = withDistance.filter(
+    ({ offer }) =>
+      (category === null || offer.category === category) &&
+      normalizeText(offer.product).includes(search),
+  );
+  const forYou = effectiveSort === 'forYou';
+  // "Para ti" without favorites still ranks by distance, freshness and votes.
+  const visible = forYou
+    ? sortOffersForUser(matching, favoriteCategories, now)
+    : matching.sort(COMPARATORS[effectiveSort]);
   const filtered = search !== '' || category !== null;
+  const showInterestsBanner = forYou && favoriteCategories.length === 0 && !preferencesLoading;
 
   return (
     <ThemedView style={styles.container}>
@@ -72,6 +83,25 @@ export default function OffersScreen() {
             category={category}
             onCategoryChange={setCategory}
           />
+          {showInterestsBanner && (
+            <ThemedView type="backgroundElement" style={[styles.notice, styles.banner]}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.bannerText}>
+                Elige tus intereses para personalizar “Para ti”.
+              </ThemedText>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.navigate('/profile')}
+                style={({ pressed }) => [
+                  styles.bannerButton,
+                  { backgroundColor: theme.accent },
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="smallBold" style={{ color: theme.onAccent }}>
+                  Elegir intereses
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
+          )}
           {error && (
             <ThemedView type="backgroundElement" style={styles.notice}>
               <ThemedText type="small" themeColor="textSecondary">
@@ -85,7 +115,12 @@ export default function OffersScreen() {
           data={visible}
           keyExtractor={({ offer }) => offer.id}
           renderItem={({ item }) => (
-            <OfferCard offer={item.offer} distanceMeters={item.distanceMeters} now={now} />
+            <OfferCard
+              offer={item.offer}
+              distanceMeters={item.distanceMeters}
+              now={now}
+              forYou={forYou && isFavoriteCategory(item.offer, favoriteCategories)}
+            />
           )}
           ItemSeparatorComponent={Separator}
           ListEmptyComponent={
@@ -168,5 +203,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  bannerText: {
+    flex: 1,
+  },
+  bannerButton: {
+    paddingVertical: Spacing.one + Spacing.half,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 999,
+  },
+  pressed: {
+    opacity: 0.75,
   },
 });

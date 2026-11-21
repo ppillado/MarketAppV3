@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 import { AccountCard } from '../components/AccountCard';
 import { GoogleLinkButton } from '../components/GoogleLinkButton';
+import { InterestsCard } from '../components/InterestsCard';
 import { useMyOfferCount } from '../hooks/useMyOfferCount';
 
 const BENEFITS: { icon: SymbolViewProps['name']; text: string }[] = [
@@ -71,6 +72,8 @@ export default function ProfileScreen() {
             <StatTile label="Ofertas publicadas" value={offerCount} />
             <StatTile label="Votos" value={voteCount} />
           </View>
+
+          <InterestsCard />
 
           {isLinked ? (
             <ThemedView
