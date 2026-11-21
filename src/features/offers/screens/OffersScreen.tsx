@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getCategoryLabel, type OfferCategory } from '@/constants/categories';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { normalizeText } from '@/lib/text';
@@ -30,6 +31,7 @@ export default function OffersScreen() {
   const [now, setNow] = useState(() => Date.now());
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OfferSort>('recent');
+  const [category, setCategory] = useState<OfferCategory | null>(null);
   const { withDistance, hasLocation, error, refreshing, refresh } = useOffers();
 
   const onRefresh = async () => {
@@ -41,8 +43,13 @@ export default function OffersScreen() {
   const effectiveSort = sort === 'distance' && !hasLocation ? 'recent' : sort;
   const search = normalizeText(query);
   const visible = withDistance
-    .filter(({ offer }) => normalizeText(offer.product).includes(search))
+    .filter(
+      ({ offer }) =>
+        (category === null || offer.category === category) &&
+        normalizeText(offer.product).includes(search),
+    )
     .sort(COMPARATORS[effectiveSort]);
+  const filtered = search !== '' || category !== null;
 
   return (
     <ThemedView style={styles.container}>
@@ -62,6 +69,8 @@ export default function OffersScreen() {
             sort={effectiveSort}
             onSortChange={setSort}
             distanceSortEnabled={hasLocation}
+            category={category}
+            onCategoryChange={setCategory}
           />
           {error && (
             <ThemedView type="backgroundElement" style={styles.notice}>
@@ -82,12 +91,10 @@ export default function OffersScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <ThemedText type="smallBold">
-                {search ? 'Sin resultados' : 'Aún no hay ofertas cerca'}
+                {filtered ? 'Sin resultados' : 'Aún no hay ofertas cerca'}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                {search
-                  ? `No hay ofertas para “${query.trim()}”. Prueba con otro producto.`
-                  : 'Sé el primero en reportar un precio desde la pestaña Reportar.'}
+                {emptyMessage(query.trim(), search !== '', category)}
               </ThemedText>
             </View>
           }
@@ -112,6 +119,13 @@ export default function OffersScreen() {
       </SafeAreaView>
     </ThemedView>
   );
+}
+
+function emptyMessage(query: string, hasSearch: boolean, category: OfferCategory | null) {
+  const inCategory = category ? ` en ${getCategoryLabel(category)}` : '';
+  if (hasSearch) return `No hay ofertas para “${query}”${inCategory}. Prueba con otro producto.`;
+  if (category) return `Aún no hay ofertas${inCategory}. Prueba con otra categoría.`;
+  return 'Sé el primero en reportar un precio desde la pestaña Reportar.';
 }
 
 function Separator() {

@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CategoryChips } from '@/components/category-chips';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getCategoryLabel, type OfferCategory } from '@/constants/categories';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useUserLocation } from '@/features/location/LocationProvider';
 import { useStoresStore } from '@/features/stores/StoresProvider';
@@ -15,6 +17,9 @@ import { LocationPermissionBanner } from '../components/LocationPermissionBanner
 import { PriceMap } from '../components/PriceMap';
 import type { PriceMapHandle } from '../components/PriceMap.types';
 
+/** Height of the floating category bar (chip + vertical margin), used to pad the map controls. */
+const CATEGORY_BAR_HEIGHT = 48;
+
 export default function MapScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -22,6 +27,14 @@ export default function MapScreen() {
   const location = useUserLocation();
   const hasCentered = useRef(false);
   const { stores } = useStoresStore();
+  const [category, setCategory] = useState<OfferCategory | null>(null);
+
+  // Only stores with a current offer in the chosen category (store.categories comes from
+  // nearby_stores, so this works instantly and from the offline cache).
+  const visibleStores = useMemo(
+    () => (category ? stores.filter((store) => store.categories.includes(category)) : stores),
+    [stores, category],
+  );
 
   // Center on the user the first time we get a fix; afterwards the user controls the camera.
   useEffect(() => {
@@ -41,11 +54,27 @@ export default function MapScreen() {
       <PriceMap
         ref={mapRef}
         showsUserLocation={location.granted}
-        stores={stores}
+        stores={visibleStores}
+        topInset={insets.top + CATEGORY_BAR_HEIGHT}
         onSelectStore={(store) =>
-          router.push({ pathname: '/store/[id]', params: { id: store.id } })
+          router.push({
+            pathname: '/store/[id]',
+            // The store sheet opens on the same category filter (it can switch to "Todas").
+            params: category ? { id: store.id, category } : { id: store.id },
+          })
         }
       />
+
+      <View pointerEvents="box-none" style={[styles.topBar, { paddingTop: insets.top + Spacing.two }]}>
+        <CategoryChips
+          value={category}
+          onChange={setCategory}
+          allLabel="Todas"
+          floating
+          accessibilityLabel="Filtrar locales por categoría"
+          contentContainerStyle={styles.topBarChips}
+        />
+      </View>
 
       <View
         pointerEvents="box-none"
@@ -71,6 +100,14 @@ export default function MapScreen() {
           </Pressable>
         )}
 
+        {category && stores.length > 0 && visibleStores.length === 0 && (
+          <ThemedView type="backgroundElement" style={styles.errorCard}>
+            <ThemedText type="small">
+              No hay locales con ofertas vigentes de {getCategoryLabel(category)}.
+            </ThemedText>
+          </ThemedView>
+        )}
+
         {location.error && (
           <ThemedView type="backgroundElement" style={styles.errorCard}>
             <ThemedText type="small">{location.error}</ThemedText>
@@ -92,6 +129,17 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  topBarChips: {
+    paddingHorizontal: Spacing.three,
+    // Room for the chip shadows, which a ScrollView would otherwise clip.
+    paddingVertical: Spacing.one,
   },
   overlay: {
     ...StyleSheet.absoluteFill,

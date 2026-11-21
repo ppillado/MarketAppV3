@@ -4,8 +4,15 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CategoryChips } from '@/components/category-chips';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import {
+  CATEGORIES,
+  getCategoryLabel,
+  isOfferCategory,
+  type OfferCategory,
+} from '@/constants/categories';
 import { Spacing } from '@/constants/theme';
 import { useUserLocation } from '@/features/location/LocationProvider';
 import { useTheme } from '@/hooks/use-theme';
@@ -22,12 +29,16 @@ import { useStoresStore } from '../StoresProvider';
 export default function StoreScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; category?: string }>();
   const { stores } = useStoresStore();
-  const store = stores.find((candidate) => candidate.id === id) ?? null;
+  const store = stores.find((candidate) => candidate.id === params.id) ?? null;
   const { state, reload } = useStoreOffers(store);
   // Fixed reference time, so "hace X min" stays consistent while scrolling.
   const [now] = useState(() => Date.now());
+  // Opens on the map's category filter, if any; "Todas" shows every offer of the store.
+  const [category, setCategory] = useState<OfferCategory | null>(() =>
+    isOfferCategory(params.category) ? params.category : null,
+  );
 
   if (!store) {
     return (
@@ -40,7 +51,13 @@ export default function StoreScreen() {
     );
   }
 
-  const offers = state.status === 'done' ? state.offers : [];
+  const allOffers = state.status === 'done' ? state.offers : [];
+  const offers = category ? allOffers.filter((offer) => offer.category === category) : allOffers;
+  // Chips only for the categories this store actually has (plus the active filter).
+  const storeCategories = CATEGORIES.filter(
+    (info) => info.id === category || allOffers.some((offer) => offer.category === info.id),
+  );
+  const showFilter = state.status === 'done' && (category !== null || storeCategories.length > 1);
 
   return (
     <ThemedView style={styles.container}>
@@ -53,10 +70,24 @@ export default function StoreScreen() {
           ) : null
         }
         ListHeaderComponent={
-          <StoreHeader
-            store={store}
-            offersCount={state.status === 'done' ? state.offers.length : store.activeOffersCount}
-          />
+          <>
+            <StoreHeader
+              store={store}
+              offersCount={state.status === 'done' ? state.offers.length : store.activeOffersCount}
+            />
+            {showFilter && (
+              <View style={styles.filter}>
+                <CategoryChips
+                  value={category}
+                  onChange={setCategory}
+                  allLabel="Todas"
+                  options={storeCategories}
+                  accessibilityLabel="Filtrar ofertas del local por categoría"
+                  contentContainerStyle={styles.filterChips}
+                />
+              </View>
+            )}
+          </>
         }
         ListEmptyComponent={
           <View style={styles.listState}>
@@ -78,7 +109,24 @@ export default function StoreScreen() {
                 </Pressable>
               </>
             )}
-            {state.status === 'done' && (
+            {state.status === 'done' && category !== null && allOffers.length > 0 && (
+              <>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+                  Este local no tiene ofertas vigentes de {getCategoryLabel(category)}.
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setCategory(null)}
+                  style={({ pressed }) => [
+                    styles.retryButton,
+                    { borderColor: theme.backgroundSelected },
+                    pressed && styles.pressed,
+                  ]}>
+                  <ThemedText type="smallBold">Ver todas las ofertas</ThemedText>
+                </Pressable>
+              </>
+            )}
+            {state.status === 'done' && allOffers.length === 0 && (
               <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
                 Este local no tiene ofertas vigentes. ¡Sé el primero en reportar una!
               </ThemedText>
@@ -86,7 +134,11 @@ export default function StoreScreen() {
           </View>
         }
         ItemSeparatorComponent={Separator}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.five }]}
+        // Extra room so the last card's vote buttons clear Android's navigation bar.
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + Spacing.five + Spacing.four },
+        ]}
         showsVerticalScrollIndicator={false}
       />
     </ThemedView>
@@ -248,6 +300,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three + Spacing.one,
     borderRadius: Spacing.four,
     borderWidth: 1.5,
+  },
+  filter: {
+    // Chips scroll edge to edge inside the sheet's horizontal padding.
+    marginHorizontal: -Spacing.four,
+    paddingBottom: Spacing.three,
+  },
+  filterChips: {
+    paddingHorizontal: Spacing.four,
   },
   listState: {
     alignItems: 'center',

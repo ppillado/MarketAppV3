@@ -1,3 +1,5 @@
+import type { OfferCategory } from '@/constants/categories';
+
 import type { Coords } from './geo';
 
 /** A community price report. Shown as a pin on the map and as a card in the Ofertas feed. */
@@ -7,6 +9,7 @@ export type Offer = {
   /** Integer CLP. */
   price: number;
   storeName: string;
+  category: OfferCategory;
   coords: Coords;
   createdAt: Date;
   /** Public URL of the price-tag photo, if the reporter attached one. */

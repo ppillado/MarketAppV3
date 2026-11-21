@@ -13,7 +13,13 @@ import { StorePin } from './StorePin';
 // Google Maps on Android, Apple Maps on iOS (no iOS Google key needed).
 const MAP_PROVIDER = Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT;
 
-export function PriceMap({ ref, showsUserLocation, stores, onSelectStore }: PriceMapProps) {
+export function PriceMap({
+  ref,
+  showsUserLocation,
+  stores,
+  topInset = 0,
+  onSelectStore,
+}: PriceMapProps) {
   const mapRef = useRef<MapView>(null);
   const scheme = useColorScheme();
   const [region, setRegion] = useState<MapRegion>(GRAN_CONCEPCION_REGION);
@@ -40,6 +46,8 @@ export function PriceMap({ ref, showsUserLocation, stores, onSelectStore }: Pric
       showsUserLocation={showsUserLocation}
       showsMyLocationButton={false}
       toolbarEnabled={false}
+      // Native controls (compass) stay below the floating category bar.
+      mapPadding={{ top: topInset, right: 0, bottom: 0, left: 0 }}
       onRegionChangeComplete={setRegion}>
       {items.map((item) => {
         if (item.kind === 'cluster') {

@@ -1,3 +1,4 @@
+import { toOfferCategories, toOfferCategory } from '@/constants/categories';
 import { GRAN_CONCEPCION_REGION } from '@/features/map/constants';
 import { MOCK_OFFERS } from '@/features/offers/mockOffers';
 import type { Vote } from '@/features/offers/votesApi';
@@ -21,6 +22,8 @@ type StoreRow = {
   lng: number;
   distance_meters: number;
   active_offers_count: number;
+  /** Only nearby_stores returns it. */
+  categories?: string[] | null;
 };
 
 /** Row shape returned by `get_store_offers`. */
@@ -33,6 +36,7 @@ type StoreOfferRow = {
   reports: number;
   created_at: string;
   my_vote: Vote | null;
+  category: string;
 };
 
 export type CachedStores = { savedAt: number; stores: Store[] };
@@ -49,6 +53,7 @@ const toNearbyStore = (row: StoreRow): NearbyStore => ({
   address: row.address,
   coords: { latitude: row.lat, longitude: row.lng },
   activeOffersCount: row.active_offers_count,
+  categories: toOfferCategories(row.categories),
   distanceMeters: row.distance_meters,
 });
 
@@ -88,6 +93,7 @@ export async function fetchStoreOffers(store: Store): Promise<StoreOffers> {
       product: row.product,
       price: row.price,
       storeName: store.name,
+      category: toOfferCategory(row.category),
       coords: store.coords,
       createdAt: new Date(row.created_at),
       photoUrl: row.photo_url,
@@ -123,14 +129,17 @@ export function mockStores(): Store[] {
   const byName = new Map<string, Store>();
   for (const offer of MOCK_OFFERS) {
     const existing = byName.get(offer.storeName);
-    if (existing) existing.activeOffersCount += 1;
-    else
+    if (existing) {
+      existing.activeOffersCount += 1;
+      if (!existing.categories.includes(offer.category)) existing.categories.push(offer.category);
+    } else
       byName.set(offer.storeName, {
         id: offer.storeName,
         name: offer.storeName,
         address: null,
         coords: offer.coords,
         activeOffersCount: 1,
+        categories: [offer.category],
       });
   }
   return [...byName.values()];
@@ -140,7 +149,19 @@ export function mockStores(): Store[] {
 export function readCachedStores(): CachedStores | null {
   try {
     const raw = kvStorage.getItemSync(CACHE_KEY);
-    return raw ? (JSON.parse(raw) as CachedStores) : null;
+    if (!raw) return null;
+    // Caches saved before categories existed have no `categories`.
+    const parsed = JSON.parse(raw) as {
+      savedAt: number;
+      stores: (Omit<Store, 'categories'> & { categories?: unknown })[];
+    };
+    return {
+      savedAt: parsed.savedAt,
+      stores: parsed.stores.map((store) => ({
+        ...store,
+        categories: toOfferCategories(store.categories),
+      })),
+    };
   } catch {
     return null;
   }

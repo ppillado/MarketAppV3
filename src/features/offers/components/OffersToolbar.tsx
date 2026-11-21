@@ -1,7 +1,9 @@
 import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { CategoryChips } from '@/components/category-chips';
 import { ThemedText } from '@/components/themed-text';
+import type { OfferCategory } from '@/constants/categories';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -20,6 +22,9 @@ type Props = {
   onSortChange: (sort: OfferSort) => void;
   /** "Más cercano" needs the user's position. */
   distanceSortEnabled: boolean;
+  /** null = "Todas". */
+  category: OfferCategory | null;
+  onCategoryChange: (category: OfferCategory | null) => void;
 };
 
 export function OffersToolbar({
@@ -28,6 +33,8 @@ export function OffersToolbar({
   sort,
   onSortChange,
   distanceSortEnabled,
+  category,
+  onCategoryChange,
 }: Props) {
   const theme = useTheme();
 
@@ -73,7 +80,8 @@ export function OffersToolbar({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chips}
-        accessibilityRole="radiogroup">
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Ordenar">
         {SORT_OPTIONS.map((option) => {
           const selected = option.value === sort;
           const disabled = option.value === 'distance' && !distanceSortEnabled;
@@ -101,6 +109,13 @@ export function OffersToolbar({
           );
         })}
       </ScrollView>
+
+      <CategoryChips
+        value={category}
+        onChange={onCategoryChange}
+        allLabel="Todas"
+        accessibilityLabel="Filtrar por categoría"
+      />
     </View>
   );
 }

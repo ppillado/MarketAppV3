@@ -1,3 +1,4 @@
+import { toOfferCategory } from '@/constants/categories';
 import { GRAN_CONCEPCION_REGION } from '@/features/map/constants';
 import { kvStorage } from '@/lib/kv-storage';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +20,7 @@ type NearbyOfferRow = {
   confirmations: number;
   reports: number;
   created_at: string;
+  category: string;
 };
 
 export type CachedOffers = { savedAt: number; offers: Offer[] };
@@ -38,6 +40,7 @@ export async function fetchOffers(): Promise<Offer[]> {
     product: row.product,
     price: row.price,
     storeName: row.store_name,
+    category: toOfferCategory(row.category),
     coords: { latitude: row.latitude, longitude: row.longitude },
     createdAt: new Date(row.created_at),
     photoUrl: row.photo_url,
@@ -53,11 +56,16 @@ export function readCachedOffers(): CachedOffers | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as {
       savedAt: number;
-      offers: (Omit<Offer, 'createdAt'> & { createdAt: string })[];
+      // Caches saved before categories existed have no `category`.
+      offers: (Omit<Offer, 'createdAt' | 'category'> & { createdAt: string; category?: unknown })[];
     };
     return {
       savedAt: parsed.savedAt,
-      offers: parsed.offers.map((offer) => ({ ...offer, createdAt: new Date(offer.createdAt) })),
+      offers: parsed.offers.map((offer) => ({
+        ...offer,
+        category: toOfferCategory(offer.category),
+        createdAt: new Date(offer.createdAt),
+      })),
     };
   } catch {
     return null;

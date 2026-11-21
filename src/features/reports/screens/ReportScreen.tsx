@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CategoryChips } from '@/components/category-chips';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { DEFAULT_CATEGORY, type OfferCategory } from '@/constants/categories';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useUserLocation } from '@/features/location/LocationProvider';
 import { useOffersStore } from '@/features/offers/OffersProvider';
@@ -52,6 +54,7 @@ export default function ReportScreen() {
   const photo = usePhotoPicker();
   const [product, setProduct] = useState('');
   const [priceDigits, setPriceDigits] = useState('');
+  const [category, setCategory] = useState<OfferCategory>(DEFAULT_CATEGORY);
   const [storeName, setStoreName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [publishing, setPublishing] = useState(false);
@@ -105,6 +108,7 @@ export default function ReportScreen() {
   const resetForm = () => {
     setProduct('');
     setPriceDigits('');
+    setCategory(DEFAULT_CATEGORY);
     setStoreName('');
     setStoreAddress('');
     photo.clearPhoto();
@@ -127,6 +131,7 @@ export default function ReportScreen() {
       await publishOffer({
         product: product.trim(),
         price: Number(priceDigits),
+        category,
         store:
           effectiveChoice.kind === 'existing'
             ? { id: effectiveChoice.id }
@@ -188,6 +193,15 @@ export default function ReportScreen() {
                 autoCapitalize="sentences"
                 returnKeyType="next"
                 maxLength={80}
+              />
+            </FormField>
+
+            <FormField label="Categoría">
+              <CategoryChips
+                value={category}
+                onChange={(next) => setCategory(next ?? DEFAULT_CATEGORY)}
+                layout="wrap"
+                accessibilityLabel="Categoría del producto"
               />
             </FormField>
 

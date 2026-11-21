@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { CategoryPill } from '@/components/category-pill';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -36,6 +37,8 @@ export function OfferCard({ offer, distanceMeters, now }: Props) {
               {formatTimeAgo(offer.createdAt, now)}
             </ThemedText>
           </View>
+
+          <CategoryPill category={offer.category} />
 
           <ThemedText style={[styles.price, { color: theme.accent }]}>
             ${formatPrice(offer.price)}

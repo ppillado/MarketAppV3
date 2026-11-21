@@ -1,3 +1,4 @@
+import type { OfferCategory } from '@/constants/categories';
 import { ensureUserId } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { Coords } from '@/types/geo';
@@ -12,6 +13,7 @@ export type OfferStore =
 export type NewOffer = {
   product: string;
   price: number;
+  category: OfferCategory;
   store: OfferStore;
   /** Local file URI from the image picker. */
   photoUri: string | null;
@@ -19,7 +21,10 @@ export type NewOffer = {
 
 /** User-facing error from publishing (server validation messages are already in Spanish). */
 export class PublishError extends Error {
-  /** submit_offer's `hint` code (e.g. 'store_not_found'), when the server rejected the offer. */
+  /**
+   * submit_offer's `hint` code when the server rejected the offer, e.g. 'store_not_found' or
+   * 'invalid_category' (category slug not accepted by the server).
+   */
   readonly code: string | null;
 
   constructor(message: string, code: string | null = null) {
@@ -45,6 +50,7 @@ export async function publishOffer(offer: NewOffer): Promise<string> {
     p_product: offer.product,
     p_price: offer.price,
     p_photo_url: photoUrl,
+    p_category: offer.category,
     // An existing store gives the offer its name and location; otherwise a new store is created.
     ...(store.id !== null
       ? { p_store_id: store.id }
@@ -58,6 +64,9 @@ export async function publishOffer(offer: NewOffer): Promise<string> {
   });
 
   if (error) {
+    if (error.hint === 'invalid_category') {
+      throw new PublishError('Elige una categoría válida para el producto.', error.hint);
+    }
     // Validation errors raised by submit_offer carry a hint code and a Spanish message.
     throw error.hint
       ? new PublishError(error.message, error.hint)
