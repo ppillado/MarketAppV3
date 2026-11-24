@@ -5,7 +5,7 @@ export type MapRegion = {
   longitudeDelta: number;
 };
 
-/** Default viewport: Gran Concepción (Concepción, Talcahuano, San Pedro, Chiguayante, Hualpén). */
+/** Vista inicial: Gran Concepción (Concepción, Talcahuano, San Pedro, Chiguayante, Hualpén). */
 export const GRAN_CONCEPCION_REGION: MapRegion = {
   latitude: -36.8201,
   longitude: -73.0444,
@@ -13,5 +13,5 @@ export const GRAN_CONCEPCION_REGION: MapRegion = {
   longitudeDelta: 0.15,
 };
 
-/** Zoom used when centering on the user (~4 km across, so nearby price pins stay visible). */
+/** Zoom al centrar en el usuario (~4 km de ancho, para que los pines de precios cercanos sigan visibles). */
 export const USER_REGION_DELTA = 0.04;

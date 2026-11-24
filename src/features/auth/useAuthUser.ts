@@ -5,12 +5,12 @@ import { supabase } from '@/lib/supabase';
 
 export type AuthUser = {
   id: string;
-  /** True while the user only has the device's anonymous identity. */
+  /** Verdadero mientras el usuario solo tiene la identidad anónima del dispositivo. */
   isAnonymous: boolean;
   google: { email: string | null; name: string | null; avatarUrl: string | null } | null;
 };
 
-/** The signed-in Supabase user (anonymous or linked), kept in sync with auth changes. */
+/** El usuario de Supabase con sesión iniciada (anónimo o vinculado), sincronizado con los cambios de sesión. */
 export function useAuthUser() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(supabase !== null);

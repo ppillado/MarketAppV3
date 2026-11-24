@@ -39,18 +39,18 @@ import {
 } from '../offerValidation';
 import { PublishError, publishOffer } from '../reportsApi';
 
-const MAX_PRICE_DIGITS = 6; // up to $999.999 CLP; validatePrice caps it at $500.000
+const MAX_PRICE_DIGITS = 6; // hasta $999.999 CLP; validatePrice lo limita a $500.000
 
-/** submit_offer error codes shown under a specific field (besides the alert). */
+/** Códigos de error de submit_offer que se muestran bajo un campo específico (además de la alerta). */
 const PRODUCT_ERROR_CODES = new Set(['invalid_product_name']);
 const PRICE_ERROR_CODES = new Set(['invalid_price', 'price_outlier']);
 
 type ServerFieldError = { field: 'product' | 'price'; message: string } | null;
 
-/** The store the offer goes to: an existing one (sends p_store_id) or a new one. */
+/** El local al que va la oferta: uno existente (envía p_store_id) o uno nuevo. */
 type StoreChoice = { kind: 'existing'; id: string; name: string; address: string | null } | { kind: 'new' };
 
-/** Params set by "+ Agregar oferta aquí" in a store's sheet. */
+/** Parámetros que envía "+ Agregar oferta aquí" desde la ficha de un local. */
 type ReportParams = { storeId?: string; storeName?: string };
 
 const choiceFromParams = ({ storeId, storeName }: ReportParams): StoreChoice | null =>
@@ -70,13 +70,13 @@ export default function ReportScreen() {
   const [storeName, setStoreName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [publishing, setPublishing] = useState(false);
-  // Errors show once a field was left (blur) or after trying to publish, not while typing.
+  // Los errores se muestran al salir del campo (blur) o tras intentar publicar, no mientras se escribe.
   const [touched, setTouched] = useState({ product: false, price: false });
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [serverFieldError, setServerFieldError] = useState<ServerFieldError>(null);
   const [choice, setChoice] = useState<StoreChoice | null>(() => choiceFromParams(params));
 
-  // The tab stays mounted: a later "+ Agregar oferta aquí" arrives as new params.
+  // La pestaña sigue montada: un nuevo "+ Agregar oferta aquí" llega como parámetros nuevos.
   const [seenStoreParam, setSeenStoreParam] = useState(params.storeId);
   if (params.storeId !== seenStoreParam) {
     setSeenStoreParam(params.storeId);
@@ -84,12 +84,12 @@ export default function ReportScreen() {
     if (fromParams) setChoice(fromParams);
   }
 
-  // The offer is pinned where it was reported: the attached location, or else the live GPS fix.
+  // La oferta se ubica donde se reportó: la ubicación adjunta o, si no hay, la posición GPS en vivo.
   const offerCoords =
     location.state.status === 'done' ? location.state.coords : liveLocation.coords;
   const nearby = useNearbyStoreSearch(offerCoords, choice?.kind !== 'existing');
 
-  // Nothing nearby to pick from: creating a new store is the only option.
+  // No hay locales cercanos para elegir: crear un local nuevo es la única opción.
   const noStoresToPick =
     nearby.search.status === 'no-location' ||
     nearby.search.status === 'error' ||
@@ -123,7 +123,7 @@ export default function ReportScreen() {
     if (serverFieldError?.field === 'price') setServerFieldError(null);
   };
 
-  /** Back to "pick a store": drops the preselected store and searches nearby again. */
+  /** Volver a "elegir un local": quita el local preseleccionado y vuelve a buscar cerca. */
   const clearStoreChoice = () => {
     setChoice(null);
     if (params.storeId) router.setParams({ storeId: undefined, storeName: undefined });
@@ -133,9 +133,9 @@ export default function ReportScreen() {
   const onAttachLocation = async () => {
     const result = await location.locate();
     if (result.status !== 'done') return;
-    // Suggest the street as the new store's address, without overwriting what was typed.
+    // Sugiere la calle como dirección del local nuevo, sin borrar lo que ya se escribió.
     if (result.address) setStoreAddress((current) => current || result.address || '');
-    // Stores near the attached position, which may differ from the live GPS fix.
+    // Locales cerca de la posición adjunta, que puede ser distinta a la posición GPS en vivo.
     nearby.retry();
   };
 
@@ -155,7 +155,7 @@ export default function ReportScreen() {
 
   const onPublish = async () => {
     if (!effectiveChoice) return;
-    // Same rules as submit_offer: show the messages under the fields instead of sending.
+    // Mismas reglas que submit_offer: muestra los mensajes bajo los campos en vez de enviar.
     if (productError || priceError) {
       setSubmitAttempted(true);
       return;
@@ -186,7 +186,7 @@ export default function ReportScreen() {
         photoUri: photo.photoUri,
       });
       resetForm();
-      // New pin, or a higher offer count on the store's pin.
+      // Pin nuevo, o un conteo de ofertas mayor en el pin del local.
       storesStore.refresh();
       offersStore.refresh();
       Alert.alert('¡Oferta publicada!', 'Gracias por ayudar a tus vecinos a comprar más barato.', [
@@ -195,11 +195,11 @@ export default function ReportScreen() {
       ]);
     } catch (error) {
       if (error instanceof PublishError && error.code === 'store_not_found') {
-        // The chosen store was removed meanwhile: let the user pick again.
+        // El local elegido fue eliminado mientras tanto: el usuario debe elegir de nuevo.
         clearStoreChoice();
         storesStore.refresh();
       }
-      // Field-specific server errors also stay under the field; the form keeps what was typed.
+      // Los errores del servidor de un campo específico también quedan bajo ese campo; el formulario conserva lo escrito.
       if (error instanceof PublishError && error.code) {
         if (PRODUCT_ERROR_CODES.has(error.code)) {
           setServerFieldError({ field: 'product', message: error.message });

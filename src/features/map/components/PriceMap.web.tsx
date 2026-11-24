@@ -6,7 +6,7 @@ import { Spacing } from '@/constants/theme';
 
 import type { PriceMapProps } from './PriceMap.types';
 
-/** react-native-maps has no web support; the map is mobile-only for now. */
+/** react-native-maps no funciona en web; por ahora el mapa es solo para celular. */
 export function PriceMap(_props: PriceMapProps) {
   return (
     <ThemedView type="backgroundElement" style={styles.container}>

@@ -7,10 +7,10 @@ export type VoteCounts = { confirmations: number; reports: number };
 
 const CACHE_KEY = 'my-votes-v1';
 
-/** User-facing error from voting (server validation messages are already in Spanish). */
+/** Error para mostrar al usuario al votar (los mensajes de validación del servidor ya vienen en español). */
 export class VoteError extends Error {}
 
-/** Sets or clears (null) the user's vote and returns the offer's updated counters. */
+/** Registra o borra (null) el voto del usuario y devuelve los contadores actualizados de la oferta. */
 export async function setOfferVote(offerId: string, vote: Vote | null): Promise<VoteCounts> {
   if (!supabase) throw new VoteError('La app todavía no está conectada al servidor.');
 
@@ -31,15 +31,15 @@ export async function setOfferVote(offerId: string, vote: Vote | null): Promise<
 }
 
 /**
- * The user's votes from the server. Doesn't create an anonymous user: someone who never
- * voted or published has no votes to load.
+ * Los votos del usuario desde el servidor. No crea un usuario anónimo: alguien que nunca
+ * votó ni publicó no tiene votos que cargar.
  */
 export async function fetchMyVotes(): Promise<Record<string, Vote> | null> {
   if (!supabase) return null;
   const { data: session } = await supabase.auth.getSession();
   if (!session.session) return null;
 
-  // RLS limits this to the caller's own rows.
+  // RLS limita esto a las filas propias del usuario que llama.
   const { data, error } = await supabase.from('offer_votes').select('offer_id, vote');
   if (error) return null;
   return Object.fromEntries(

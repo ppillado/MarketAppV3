@@ -9,11 +9,11 @@ import type { Coords } from '@/types/geo';
 import type { Offer } from '@/types/offer';
 import type { NearbyStore, Store } from '@/types/store';
 
-/** The app covers Gran Concepción, so one region-wide query serves the whole map. */
+/** La app cubre el Gran Concepción, así que una sola consulta para toda la región sirve a todo el mapa. */
 const QUERY_RADIUS_M = 40_000;
 const CACHE_KEY = 'stores-cache-v1';
 
-/** Row shape returned by `nearby_stores` / `find_nearby_stores` (supabase/migrations). */
+/** Forma de las filas que devuelven `nearby_stores` / `find_nearby_stores` (supabase/migrations). */
 type StoreRow = {
   id: string;
   name: string;
@@ -22,11 +22,11 @@ type StoreRow = {
   lng: number;
   distance_meters: number;
   active_offers_count: number;
-  /** Only nearby_stores returns it. */
+  /** Solo nearby_stores lo devuelve. */
   categories?: string[] | null;
 };
 
-/** Row shape returned by `get_store_offers`. */
+/** Forma de las filas que devuelve `get_store_offers`. */
 type StoreOfferRow = {
   id: string;
   product: string;
@@ -43,7 +43,7 @@ export type CachedStores = { savedAt: number; stores: Store[] };
 
 export type StoreOffers = {
   offers: Offer[];
-  /** The caller's votes on these offers, as stored on the server. */
+  /** Los votos del usuario en estas ofertas, tal como están guardados en el servidor. */
   myVotes: Record<string, Vote>;
 };
 
@@ -57,7 +57,7 @@ const toNearbyStore = (row: StoreRow): NearbyStore => ({
   distanceMeters: row.distance_meters,
 });
 
-/** Stores with at least one current offer in Gran Concepción (map pins). */
+/** Locales con al menos una oferta vigente en el Gran Concepción (pines del mapa). */
 export async function fetchStores(): Promise<Store[]> {
   if (!supabase) throw new Error('Supabase no está configurado');
 
@@ -68,17 +68,17 @@ export async function fetchStores(): Promise<Store[]> {
   });
   if (error) throw error;
 
-  // The distance is from the region center, not the user: drop it.
+  // La distancia es desde el centro de la región, no desde el usuario: se descarta.
   return (data as StoreRow[]).map((row) => {
     const { distanceMeters: _, ...store } = toNearbyStore(row);
     return store;
   });
 }
 
-/** Current offers of one store, newest first, with the caller's votes. */
+/** Ofertas vigentes de un local, más nuevas primero, con los votos del usuario. */
 export async function fetchStoreOffers(store: Store): Promise<StoreOffers> {
   if (!supabase) {
-    // Mock mode: the mock store id is the store name (see mockStores).
+    // Modo de prueba (mock): el id del local de prueba es su nombre (ver mockStores).
     const offers = MOCK_OFFERS.filter((offer) => offer.storeName === store.name);
     return { offers, myVotes: {} };
   }
@@ -106,7 +106,7 @@ export async function fetchStoreOffers(store: Store): Promise<StoreOffers> {
   };
 }
 
-/** Every store within `radiusMeters` of `coords` (with or without offers), nearest first. */
+/** Todos los locales a menos de `radiusMeters` de `coords` (con o sin ofertas), más cercanos primero. */
 export async function findNearbyStores(coords: Coords, radiusMeters = 200): Promise<NearbyStore[]> {
   if (!supabase) {
     return mockStores()
@@ -124,7 +124,7 @@ export async function findNearbyStores(coords: Coords, radiusMeters = 200): Prom
   return (data as StoreRow[]).map(toNearbyStore);
 }
 
-/** Fallback stores while Supabase isn't configured: one per mock store name. */
+/** Locales de respaldo mientras Supabase no está configurado: uno por cada nombre de local de prueba. */
 export function mockStores(): Store[] {
   const byName = new Map<string, Store>();
   for (const offer of MOCK_OFFERS) {
@@ -145,12 +145,12 @@ export function mockStores(): Store[] {
   return [...byName.values()];
 }
 
-/** Last successful fetch, read synchronously so the map has pins on the very first frame. */
+/** Última descarga exitosa, leída de forma síncrona para que el mapa tenga pines desde el primer cuadro. */
 export function readCachedStores(): CachedStores | null {
   try {
     const raw = kvStorage.getItemSync(CACHE_KEY);
     if (!raw) return null;
-    // Caches saved before categories existed have no `categories`.
+    // Las cachés guardadas antes de que existieran las categorías no tienen `categories`.
     const parsed = JSON.parse(raw) as {
       savedAt: number;
       stores: (Omit<Store, 'categories'> & { categories?: unknown })[];

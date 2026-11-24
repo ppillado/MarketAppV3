@@ -1,5 +1,5 @@
 /**
- * Offer categories. The slugs must match `offers_category_check` and the check inside
+ * Categorías de ofertas. Los slugs deben coincidir con `offers_category_check` y con la validación de
  * `submit_offer` (supabase/migrations/20261006000000_offer_categories.sql).
  */
 export type OfferCategory =
@@ -16,7 +16,7 @@ export type CategoryInfo = { id: OfferCategory; label: string; emoji: string };
 
 export const DEFAULT_CATEGORY: OfferCategory = 'otros';
 
-/** Display order of the category chips ('otros' last). */
+/** Orden en que se muestran los chips de categoría ('otros' al final). */
 export const CATEGORIES: readonly CategoryInfo[] = [
   { id: 'abarrotes', label: 'Abarrotes', emoji: '🥫' },
   { id: 'lacteos', label: 'Lácteos', emoji: '🥛' },
@@ -34,12 +34,12 @@ export function isOfferCategory(value: unknown): value is OfferCategory {
   return typeof value === 'string' && BY_ID.has(value as OfferCategory);
 }
 
-/** Any value (server row, old offline cache, route param) → a valid category, else 'otros'. */
+/** Cualquier valor (fila del servidor, caché offline antigua, parámetro de ruta) → una categoría válida, o 'otros'. */
 export function toOfferCategory(value: unknown): OfferCategory {
   return isOfferCategory(value) ? value : DEFAULT_CATEGORY;
 }
 
-/** Valid, distinct categories from an untrusted array (old caches may not have the field). */
+/** Categorías válidas y sin repetir a partir de un arreglo no confiable (las cachés antiguas pueden no tener el campo). */
 export function toOfferCategories(value: unknown): OfferCategory[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.filter(isOfferCategory))];

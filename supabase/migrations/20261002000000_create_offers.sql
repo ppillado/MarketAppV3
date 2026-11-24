@@ -1,11 +1,11 @@
--- MarketApp: community price reports ("offers"), geolocated with PostGIS.
+-- MarketApp: reportes de precios de la comunidad ("offers"), geolocalizados con PostGIS.
 
 create extension if not exists postgis with schema extensions;
 
 create table public.offers (
   id uuid primary key default gen_random_uuid(),
   product text not null check (char_length(product) between 1 and 80),
-  -- Integer CLP.
+  -- Entero en CLP.
   price integer not null check (price > 0 and price < 10000000),
   store_name text not null check (char_length(store_name) between 1 and 80),
   location extensions.geography(point, 4326) not null,
@@ -20,8 +20,8 @@ comment on table public.offers is 'Community price reports. Writes only via serv
 create index offers_location_idx on public.offers using gist (location);
 create index offers_created_at_idx on public.offers (created_at desc);
 
--- Row Level Security: anyone can read; nobody can write directly from the app.
--- Inserts and votes will go through server-side functions that validate outliers first.
+-- Row Level Security: cualquiera puede leer; nadie puede escribir directamente desde la app.
+-- Las inserciones y los votos pasarán por funciones del servidor que primero validan los valores atípicos.
 alter table public.offers enable row level security;
 
 create policy "Offers are readable by everyone"
@@ -29,7 +29,7 @@ create policy "Offers are readable by everyone"
   to anon, authenticated
   using (true);
 
--- Offers within `radius_m` meters of (lat, lng), newest first, ignoring stale reports.
+-- Ofertas a menos de `radius_m` metros de (lat, lng), más nuevas primero, ignorando reportes antiguos.
 create or replace function public.nearby_offers(
   lat double precision,
   lng double precision,

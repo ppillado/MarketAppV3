@@ -4,29 +4,29 @@ import * as WebBrowser from 'expo-web-browser';
 import { ensureUserId } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-/** Deep link Google/Supabase send the user back to (handled by src/app/auth-callback.tsx). */
+/** Deep link por el que Google/Supabase devuelven al usuario a la app (lo maneja src/app/auth-callback.tsx). */
 export const AUTH_CALLBACK_PATH = 'auth-callback';
 
-/** User-facing error from linking (messages are in Spanish). */
+/** Error para mostrar al usuario al vincular (los mensajes están en español). */
 export class GoogleLinkError extends Error {}
 
 /**
- * Links a Google account to the current (anonymous) Supabase user, keeping the same user id
- * so their offers and votes stay theirs.
+ * Vincula una cuenta de Google al usuario actual (anónimo) de Supabase, manteniendo el mismo id
+ * de usuario, para que sus ofertas y votos sigan siendo suyos.
  *
- * Flow (PKCE, no native Google SDK needed):
- * 1. Supabase builds the Google consent URL for linking (`linkIdentity`).
- * 2. We open it in the system browser (`openAuthSessionAsync`).
- * 3. Google → Supabase → redirects to marketappv3://auth-callback?code=…
- * 4. We exchange that one-time code for the upgraded session.
+ * Flujo (PKCE, sin necesidad del SDK nativo de Google):
+ * 1. Supabase arma la URL de autorización de Google para vincular (`linkIdentity`).
+ * 2. La abrimos en el navegador del sistema (`openAuthSessionAsync`).
+ * 3. Google → Supabase → redirige a marketappv3://auth-callback?code=…
+ * 4. Canjeamos ese código de un solo uso por la sesión actualizada.
  *
- * Requires (see the setup steps): Google provider enabled in Supabase with the Web client
- * credentials, "Allow manual linking" on, and marketappv3://** in the redirect allow list.
+ * Requiere (ver los pasos de configuración): proveedor Google activado en Supabase con las credenciales
+ * del cliente Web, "Allow manual linking" activado y marketappv3://** en la lista de redirecciones permitidas.
  */
 export async function linkGoogleAccount(): Promise<'linked' | 'cancelled'> {
   if (!supabase) throw new GoogleLinkError('La app todavía no está conectada al servidor.');
 
-  // Linking upgrades an existing user, so make sure this device has one.
+  // Vincular actualiza un usuario existente, así que nos aseguramos de que este dispositivo tenga uno.
   await ensureUserId().catch((error: Error) => {
     throw new GoogleLinkError(error.message);
   });

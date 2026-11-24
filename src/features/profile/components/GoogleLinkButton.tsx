@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// Google's sign-in button branding: neutral light/dark variants with the official "G" logo.
+// Diseño oficial del botón de Google: variantes neutras clara/oscura con el logo "G" oficial.
 // https://developers.google.com/identity/branding-guidelines
 const GOOGLE_BUTTON = {
   light: { background: '#FFFFFF', border: '#747775', text: '#1F1F1F' },

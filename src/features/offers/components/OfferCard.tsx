@@ -16,10 +16,10 @@ import { VoteBar } from './VoteBar';
 
 type Props = {
   offer: Offer;
-  /** Null while the user's position is unknown (hides the distance). */
+  /** Null mientras no se conoce la posición del usuario (oculta la distancia). */
   distanceMeters: number | null;
   now: number;
-  /** Shows a "★ Para ti" tag (offer in one of the user's favorite categories). */
+  /** Muestra la etiqueta "★ Para ti" (oferta de una de las categorías favoritas del usuario). */
   forYou?: boolean;
 };
 

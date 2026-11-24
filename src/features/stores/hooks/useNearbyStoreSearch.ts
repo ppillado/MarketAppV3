@@ -5,7 +5,7 @@ import type { NearbyStore } from '@/types/store';
 
 import { findNearbyStores } from '../storesApi';
 
-/** Short radius: stores the user is most likely standing in. */
+/** Radio corto: los locales donde probablemente está parado el usuario. */
 const SEARCH_RADIUS_M = 200;
 
 type Result = { attempt: number; stores: NearbyStore[] | null };
@@ -17,9 +17,9 @@ export type NearbyStoreSearch =
   | { status: 'done'; stores: NearbyStore[] };
 
 /**
- * Existing stores around the user (find_nearby_stores), so publishing reuses a store instead
- * of creating a duplicate. Searches once when a position is first known (GPS updates don't
- * re-run it) and again on `retry()`.
+ * Locales existentes alrededor del usuario (find_nearby_stores), para que al publicar se reutilice un local
+ * en vez de crear un duplicado. Busca una vez cuando se conoce la posición por primera vez (las
+ * actualizaciones de GPS no la repiten) y de nuevo con `retry()`.
  */
 export function useNearbyStoreSearch(coords: Coords | null, enabled: boolean) {
   const [attempt, setAttempt] = useState(0);

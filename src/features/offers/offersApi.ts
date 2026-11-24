@@ -4,11 +4,11 @@ import { kvStorage } from '@/lib/kv-storage';
 import { supabase } from '@/lib/supabase';
 import type { Offer } from '@/types/offer';
 
-/** The app covers Gran Concepción, so one region-wide query serves every screen. */
+/** La app cubre el Gran Concepción, así que una sola consulta para toda la región sirve a todas las pantallas. */
 const QUERY_RADIUS_M = 30_000;
-const CACHE_KEY = 'offers-cache-v2'; // v2: offers include photoUrl
+const CACHE_KEY = 'offers-cache-v2'; // v2: las ofertas incluyen photoUrl
 
-/** Row shape returned by the `nearby_offers` RPC (supabase/migrations). */
+/** Forma de las filas que devuelve la RPC `nearby_offers` (supabase/migrations). */
 type NearbyOfferRow = {
   id: string;
   product: string;
@@ -49,14 +49,14 @@ export async function fetchOffers(): Promise<Offer[]> {
   }));
 }
 
-/** Last successful fetch, read synchronously so the map has pins on the very first frame. */
+/** Última descarga exitosa, leída de forma síncrona para que el mapa tenga pines desde el primer cuadro. */
 export function readCachedOffers(): CachedOffers | null {
   try {
     const raw = kvStorage.getItemSync(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as {
       savedAt: number;
-      // Caches saved before categories existed have no `category`.
+      // Las cachés guardadas antes de que existieran las categorías no tienen `category`.
       offers: (Omit<Offer, 'createdAt' | 'category'> & { createdAt: string; category?: unknown })[];
     };
     return {

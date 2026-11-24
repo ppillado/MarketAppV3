@@ -10,14 +10,14 @@ import type { NearbyStore } from '@/types/store';
 
 type Props = {
   search: NearbyStoreSearch;
-  /** 'new' when "Crear nuevo local" is chosen, null when nothing is chosen yet. */
+  /** 'new' cuando se elige "Crear nuevo local", null cuando aún no se elige nada. */
   selected: 'new' | null;
   onSelectStore: (store: NearbyStore) => void;
   onCreateNew: () => void;
   onRetry: () => void;
 };
 
-/** "¿Estás en alguno de estos locales?": nearby existing stores plus "+ Crear nuevo local". */
+/** "¿Estás en alguno de estos locales?": locales existentes cercanos más "+ Crear nuevo local". */
 export function NearbyStorePicker({ search, selected, onSelectStore, onCreateNew, onRetry }: Props) {
   const theme = useTheme();
   const stores = search.status === 'done' ? search.stores : [];

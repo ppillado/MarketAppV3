@@ -7,7 +7,7 @@ import type { Coords } from '@/types/geo';
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 const POSITION_ERROR = 'No pudimos obtener tu ubicación. Revisa que el GPS esté activado.';
 
-// Balanced accuracy + a 25 m threshold keeps distances accurate without draining the battery.
+// Precisión equilibrada + un umbral de 25 m mantienen las distancias exactas sin gastar la batería.
 const WATCH_OPTIONS: Location.LocationOptions = {
   accuracy: Location.Accuracy.Balanced,
   distanceInterval: 25,
@@ -19,8 +19,8 @@ type UserLocation = ReturnType<typeof useLiveLocation>;
 const LocationContext = createContext<UserLocation | null>(null);
 
 /**
- * App-wide live GPS position, shared by the map and the Ofertas feed so there is a single
- * permission prompt and a single position subscription.
+ * Posición GPS en vivo para toda la app, compartida por el mapa y la lista de Ofertas, así hay una sola
+ * solicitud de permiso y una sola suscripción a la posición.
  */
 export function LocationProvider({ children }: { children: ReactNode }) {
   const location = useLiveLocation();
@@ -34,9 +34,9 @@ export function useUserLocation() {
 }
 
 /**
- * Manages the foreground location permission and follows the user's position while the app
- * is in use. Only asks the OS once (while status is undetermined); after a denial the UI
- * decides whether to retry or send the user to Settings via `canAskAgain`.
+ * Maneja el permiso de ubicación en primer plano y sigue la posición del usuario mientras usa
+ * la app. Solo le pregunta al sistema una vez (mientras el estado está indefinido); tras un rechazo, la interfaz
+ * decide si reintentar o enviar al usuario a Ajustes, según `canAskAgain`.
  */
 function useLiveLocation() {
   const [permission, requestPermission, getPermission] = Location.useForegroundPermissions();
@@ -48,14 +48,14 @@ function useLiveLocation() {
   const granted = status === Location.PermissionStatus.GRANTED;
   const denied = status === Location.PermissionStatus.DENIED;
 
-  // First launch: prompt once.
+  // Primer inicio: preguntar una sola vez.
   useEffect(() => {
     if (status === Location.PermissionStatus.UNDETERMINED && canAskAgain) {
       requestPermission();
     }
   }, [status, canAskAgain, requestPermission]);
 
-  // Re-check when returning from Settings.
+  // Volver a revisar al regresar desde Ajustes.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') getPermission();
@@ -63,7 +63,7 @@ function useLiveLocation() {
     return () => sub.remove();
   }, [getPermission]);
 
-  // Live position: cached fix first (instant, works offline), then follow updates.
+  // Posición en vivo: primero la última conocida (instantánea, funciona offline) y luego se siguen las actualizaciones.
   useEffect(() => {
     if (!granted) return;
     let cancelled = false;
@@ -94,7 +94,7 @@ function useLiveLocation() {
     };
   }, [granted]);
 
-  /** One-shot fresh fix, e.g. for the "center on me" button. */
+  /** Ubicación nueva de una sola vez, ej. para el botón "centrar en mí". */
   const refreshPosition = useCallback(
     () =>
       Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(

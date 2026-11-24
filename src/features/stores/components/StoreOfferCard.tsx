@@ -13,12 +13,12 @@ import type { Offer } from '@/types/offer';
 
 type Props = {
   offer: Offer;
-  /** When the store's offers were loaded (see useOfferVote). */
+  /** Cuándo se cargaron las ofertas del local (ver useOfferVote). */
   fetchedAt: number;
   now: number;
 };
 
-/** An offer inside a store's sheet: the store is already in the header, so no store/directions row. */
+/** Una oferta dentro de la ficha de un local: el local ya está en el encabezado, así que no hay fila de local ni de ruta. */
 export function StoreOfferCard({ offer, fetchedAt, now }: Props) {
   const theme = useTheme();
 

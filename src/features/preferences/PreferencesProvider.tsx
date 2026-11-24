@@ -13,12 +13,12 @@ import {
 } from './preferencesApi';
 
 type PreferencesContextValue = {
-  /** Favorite categories in priority order (first picked = highest priority). */
+  /** Categorías favoritas en orden de prioridad (la primera elegida = mayor prioridad). */
   favoriteCategories: OfferCategory[];
-  /** True until the server copy has been checked for the current session. */
+  /** Verdadero hasta que se revisa la copia del servidor para la sesión actual. */
   isLoading: boolean;
   isSaving: boolean;
-  /** Last save error (the change was rolled back); cleared by the next change. */
+  /** Último error al guardar (el cambio se revirtió); se limpia con el siguiente cambio. */
   error: string | null;
   toggleFavoriteCategory: (category: OfferCategory) => void;
   clearFavoriteCategories: () => void;
@@ -27,9 +27,9 @@ type PreferencesContextValue = {
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 /**
- * The user's favorite categories (Perfil → "Tus intereses", used by the "Para ti" ranking).
- * Offline-first: starts from the local cache, syncs with Supabase once there is a session,
- * and applies changes optimistically, rolling back if the save fails.
+ * Las categorías favoritas del usuario (Perfil → "Tus intereses", usadas por el ranking "Para ti").
+ * Offline-first: parte desde la caché local, se sincroniza con Supabase cuando hay sesión,
+ * y aplica los cambios de forma optimista, revirtiéndolos si falla el guardado.
  */
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuthUser();
@@ -40,10 +40,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [savingCount, setSavingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Latest shown value (toggles compose on it) and the last value the server confirmed.
+  // Último valor mostrado (los toques se aplican sobre él) y el último valor que confirmó el servidor.
   const currentRef = useRef(favoriteCategories);
   const confirmedRef = useRef(favoriteCategories);
-  // Increments on every local change, so late responses never overwrite newer choices.
+  // Aumenta con cada cambio local, así las respuestas atrasadas nunca pisan elecciones más nuevas.
   const requestIdRef = useRef(0);
   const confirmedIdRef = useRef(0);
 
@@ -53,14 +53,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     writeCachedPreferences(next);
   }, []);
 
-  // Sync with the server copy (e.g. after reinstalling or linking another account).
+  // Sincroniza con la copia del servidor (ej. después de reinstalar o de vincular otra cuenta).
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     const startedAt = requestIdRef.current;
     fetchMyPreferences().then((server) => {
       if (cancelled) return;
-      // Skip if the user changed something meanwhile; offline (null) keeps the cache.
+      // Se omite si el usuario cambió algo mientras tanto; sin conexión (null) se mantiene la caché.
       if (server && requestIdRef.current === startedAt) {
         confirmedRef.current = server;
         apply(server);
@@ -78,7 +78,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       apply(next);
       setError(null);
 
-      // Mock mode: preferences stay local.
+      // Modo de prueba (mock): las preferencias quedan solo en el celular.
       if (!supabase) {
         confirmedRef.current = next;
         return;
@@ -110,7 +110,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const toggleFavoriteCategory = useCallback(
     (category: OfferCategory) => {
       const current = currentRef.current;
-      // New picks go last: earlier picks keep their higher priority.
+      // Las nuevas elecciones van al final: las anteriores mantienen su mayor prioridad.
       save(
         current.includes(category)
           ? current.filter((item) => item !== category)

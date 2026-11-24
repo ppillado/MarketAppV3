@@ -26,7 +26,7 @@ import { StoreOfferCard } from '../components/StoreOfferCard';
 import { useStoreOffers } from '../hooks/useStoreOffers';
 import { useStoresStore } from '../StoresProvider';
 
-/** Store sheet (form sheet over the map): header, "+ Agregar oferta aquí" and its current offers. */
+/** Ficha de local (hoja sobre el mapa): encabezado, "+ Agregar oferta aquí" y sus ofertas vigentes. */
 export default function StoreScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -35,9 +35,9 @@ export default function StoreScreen() {
   const store = stores.find((candidate) => candidate.id === params.id) ?? null;
   const { state, reload } = useStoreOffers(store);
   const isHidden = useIsOfferHidden();
-  // Fixed reference time, so "hace X min" stays consistent while scrolling.
+  // Hora de referencia fija, para que "hace X min" no cambie mientras se hace scroll.
   const [now] = useState(() => Date.now());
-  // Opens on the map's category filter, if any; "Todas" shows every offer of the store.
+  // Se abre con el filtro de categoría del mapa, si hay; "Todas" muestra todas las ofertas del local.
   const [category, setCategory] = useState<OfferCategory | null>(() =>
     isOfferCategory(params.category) ? params.category : null,
   );
@@ -53,13 +53,13 @@ export default function StoreScreen() {
     );
   }
 
-  // Offers the user's vote just hid (server rule) leave the list right away.
+  // Las ofertas que el voto del usuario acaba de ocultar (regla del servidor) salen de la lista de inmediato.
   const allOffers =
     state.status === 'done'
       ? state.offers.filter((offer) => !isHidden(offer, state.fetchedAt))
       : [];
   const offers = category ? allOffers.filter((offer) => offer.category === category) : allOffers;
-  // Chips only for the categories this store actually has (plus the active filter).
+  // Chips solo para las categorías que este local realmente tiene (más el filtro activo).
   const storeCategories = CATEGORIES.filter(
     (info) => info.id === category || allOffers.some((offer) => offer.category === info.id),
   );
@@ -140,7 +140,7 @@ export default function StoreScreen() {
           </View>
         }
         ItemSeparatorComponent={Separator}
-        // Extra room so the last card's vote buttons clear Android's navigation bar.
+        // Espacio extra para que los botones de voto de la última tarjeta no queden bajo la barra de navegación de Android.
         contentContainerStyle={[
           styles.content,
           { paddingBottom: insets.bottom + Spacing.five + Spacing.four },
@@ -157,7 +157,7 @@ function StoreHeader({ store, offersCount }: { store: Store; offersCount: number
   const distance = coords ? distanceInMeters(coords, store.coords) : null;
 
   const onAddOffer = () => {
-    // Close the sheet, then open Reportar with this store preselected.
+    // Cierra la hoja y luego abre Reportar con este local preseleccionado.
     router.back();
     router.navigate({ pathname: '/report', params: { storeId: store.id, storeName: store.name } });
   };
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   filter: {
-    // Chips scroll edge to edge inside the sheet's horizontal padding.
+    // Los chips hacen scroll de borde a borde dentro del padding horizontal de la hoja.
     marginHorizontal: -Spacing.four,
     paddingBottom: Spacing.three,
   },

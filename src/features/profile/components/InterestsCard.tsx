@@ -8,7 +8,7 @@ import { Spacing } from '@/constants/theme';
 import { usePreferences } from '@/features/preferences/PreferencesProvider';
 import { useTheme } from '@/hooks/use-theme';
 
-/** "Tus intereses": favorite categories for the "Para ti" ranking, saved on every tap. */
+/** "Tus intereses": categorías favoritas para el ranking "Para ti"; se guardan con cada toque. */
 export function InterestsCard() {
   const theme = useTheme();
   const { favoriteCategories, isSaving, error, toggleFavoriteCategory, clearFavoriteCategories } =

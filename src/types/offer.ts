@@ -2,19 +2,19 @@ import type { OfferCategory } from '@/constants/categories';
 
 import type { Coords } from './geo';
 
-/** A community price report. Shown as a pin on the map and as a card in the Ofertas feed. */
+/** Un reporte de precio de la comunidad. Se muestra como pin en el mapa y como tarjeta en la lista de Ofertas. */
 export type Offer = {
   id: string;
   product: string;
-  /** Integer CLP. */
+  /** Entero en CLP. */
   price: number;
   storeName: string;
   category: OfferCategory;
   coords: Coords;
   createdAt: Date;
-  /** Public URL of the price-tag photo, if the reporter attached one. */
+  /** URL pública de la foto de la etiqueta de precio, si quien reportó adjuntó una. */
   photoUrl: string | null;
-  /** Community votes: "👍 Confirmar" (price still valid) and "👎 Agotado/Error". */
+  /** Votos de la comunidad: "👍 Confirmar" (el precio sigue vigente) y "👎 Agotado/Error". */
   confirmations: number;
   reports: number;
 };

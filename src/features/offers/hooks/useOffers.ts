@@ -6,13 +6,13 @@ import { useOffersStore } from '../OffersProvider';
 
 export type OfferWithDistance = {
   offer: Offer;
-  /** Meters from the user's live GPS position; null until a position is known. */
+  /** Metros desde la posición GPS en vivo del usuario; null hasta que se conoce la posición. */
   distanceMeters: number | null;
 };
 
 /**
- * Offers for the map pins and the Ofertas feed (Supabase + local cache, see OffersProvider),
- * with distances from the user's live position.
+ * Ofertas para los pines del mapa y la lista de Ofertas (Supabase + caché local, ver OffersProvider),
+ * con la distancia desde la posición en vivo del usuario.
  */
 export function useOffers() {
   const store = useOffersStore();
@@ -23,6 +23,6 @@ export function useOffers() {
     distanceMeters: coords ? distanceInMeters(coords, offer.coords) : null,
   }));
 
-  // `store.offers` stays referentially stable across GPS updates (the map clusters key off it).
+  // `store.offers` mantiene la misma referencia entre actualizaciones de GPS (los clusters del mapa dependen de eso).
   return { ...store, withDistance, hasLocation: coords !== null };
 }

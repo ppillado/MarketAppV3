@@ -11,7 +11,7 @@ export type PriceMapProps = {
   ref?: Ref<PriceMapHandle>;
   showsUserLocation: boolean;
   stores: Store[];
-  /** Space taken by UI floating over the top of the map (keeps the compass below it). */
+  /** Espacio que ocupa la interfaz flotante sobre el mapa (mantiene la brújula debajo). */
   topInset?: number;
   onSelectStore: (store: Store) => void;
 };

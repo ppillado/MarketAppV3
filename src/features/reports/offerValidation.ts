@@ -1,8 +1,8 @@
 import { formatPrice } from '@/lib/format';
 
 /**
- * Client-side copies of submit_offer's checks (supabase/migrations/20261008000000_offer_moderation.sql),
- * so most mistakes are caught before publishing. The server stays the source of truth.
+ * Copias en la app de las validaciones de submit_offer (supabase/migrations/20261008000000_offer_moderation.sql),
+ * para detectar la mayoría de los errores antes de publicar. El servidor sigue siendo la fuente de verdad.
  */
 
 export const PRODUCT_MIN_LENGTH = 2;
@@ -11,15 +11,15 @@ export const PRICE_MIN = 50;
 export const PRICE_MAX = 500_000;
 
 const LETTERS = /[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]/g;
-/** 4+ of the same letter in a row ("aaaa"); digits are not checked, so "Pack 10000" is fine. */
+/** 4 o más letras iguales seguidas ("aaaa"); los números no se revisan, así "Pack 10000" es válido. */
 const REPEATED_LETTER = /([a-zA-ZáéíóúüñÁÉÍÓÚÜÑ])\1{3,}/iu;
 
-/** Same normalization as the server's clean_product: collapse whitespace and trim. */
+/** Misma normalización que clean_product en el servidor: junta espacios repetidos y recorta los extremos. */
 export function normalizeProductName(text: string) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-/** Spanish error for an invalid product name, or null if it passes the server's rules. */
+/** Error en español para un nombre de producto inválido, o null si cumple las reglas del servidor. */
 export function validateProduct(text: string): string | null {
   const name = normalizeProductName(text);
   if (name.length === 0) return 'Escribe el nombre del producto.';
@@ -35,7 +35,7 @@ export function validateProduct(text: string): string | null {
   return null;
 }
 
-/** Spanish error for a price outside the accepted CLP range, or null if it's valid. */
+/** Error en español para un precio fuera del rango aceptado en CLP, o null si es válido. */
 export function validatePrice(price: number): string | null {
   if (!Number.isFinite(price) || price <= 0) return 'Escribe el precio.';
   if (price < PRICE_MIN || price > PRICE_MAX) {

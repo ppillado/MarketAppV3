@@ -11,14 +11,14 @@ type ClusterProps = { offers: number };
 
 export type MapItem =
   | { kind: 'store'; store: Store }
-  /** `count`: active offers of all the stores in the group. */
+  /** `count`: ofertas activas de todos los locales del grupo. */
   | { kind: 'cluster'; id: number; count: number; coords: Coords };
 
-// Only pins that would overlap on screen (< ~40 px apart, i.e. same neighborhood) merge.
-// From zoom 15 (a few blocks across) every store shows on its own.
+// Solo se agrupan los pines que se taparían en pantalla (a menos de ~40 px, o sea, el mismo barrio).
+// Desde el zoom 15 (unas pocas cuadras de ancho) cada local se muestra por separado.
 const CLUSTER_OPTIONS = { radius: 40, maxZoom: 14, minPoints: 2 };
 
-/** Groups store pins into numbered clusters for the visible region (supercluster, pure JS). */
+/** Agrupa los pines de locales en clusters numerados para la región visible (supercluster, JS puro). */
 export function useStoreClusters(stores: Store[], region: MapRegion) {
   const index = useMemo(() => {
     const cluster = new Supercluster<StoreProps, ClusterProps>({
@@ -60,7 +60,7 @@ export function useStoreClusters(stores: Store[], region: MapRegion) {
     });
   }, [index, stores, region]);
 
-  /** Zoom level at which a cluster splits apart, as a region delta to animate to. */
+  /** Nivel de zoom en que un cluster se separa, expresado como delta de región para animar hacia él. */
   const expansionDelta = (clusterId: number) =>
     360 / 2 ** Math.min(index.getClusterExpansionZoom(clusterId), CLUSTER_OPTIONS.maxZoom + 1);
 
@@ -72,7 +72,7 @@ function regionToZoom(region: MapRegion) {
 }
 
 function regionToBBox(region: MapRegion): [number, number, number, number] {
-  // Pad by half a screen so pins don't pop in at the edges while panning.
+  // Se agrega media pantalla de margen para que los pines no aparezcan de golpe en los bordes al mover el mapa.
   const lngPad = region.longitudeDelta;
   const latPad = region.latitudeDelta;
   return [

@@ -5,12 +5,12 @@ import { supabase } from '@/lib/supabase';
 
 const CACHE_KEY = 'favorite-categories-v1';
 
-/** User-facing error from saving preferences (server validation messages are in Spanish). */
+/** Error para mostrar al usuario al guardar preferencias (los mensajes de validación del servidor están en español). */
 export class PreferencesError extends Error {}
 
 /**
- * The user's favorite categories from the server (get_my_preferences). Doesn't create an
- * anonymous user: someone without a session has nothing saved yet. Null on any failure.
+ * Las categorías favoritas del usuario desde el servidor (get_my_preferences). No crea un
+ * usuario anónimo: alguien sin sesión todavía no tiene nada guardado. Null ante cualquier error.
  */
 export async function fetchMyPreferences(): Promise<OfferCategory[] | null> {
   if (!supabase) return null;
@@ -23,8 +23,8 @@ export async function fetchMyPreferences(): Promise<OfferCategory[] | null> {
 }
 
 /**
- * Replaces the user's favorite categories (set_favorite_categories) and returns what the
- * server saved (normalized and deduplicated, in priority order).
+ * Reemplaza las categorías favoritas del usuario (set_favorite_categories) y devuelve lo que
+ * guardó el servidor (normalizado y sin duplicados, en orden de prioridad).
  */
 export async function saveFavoriteCategories(
   categories: readonly OfferCategory[],

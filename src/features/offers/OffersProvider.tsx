@@ -7,21 +7,21 @@ import type { Offer } from '@/types/offer';
 import { MOCK_OFFERS } from './mockOffers';
 import { fetchOffers, readCachedOffers, writeCachedOffers } from './offersApi';
 
-/** Cached offers younger than this are shown without hitting Supabase. */
+/** Las ofertas en caché más nuevas que esto se muestran sin consultar a Supabase. */
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 type OffersState = {
   offers: Offer[];
-  /** Where the shown offers come from. */
+  /** De dónde vienen las ofertas que se muestran. */
   source: 'mock' | 'cache' | 'network';
-  /** When the shown offers were fetched from Supabase (null for mock data / empty cache). */
+  /** Cuándo se pidieron a Supabase las ofertas mostradas (null para datos de prueba / caché vacía). */
   updatedAt: number | null;
   error: string | null;
 };
 
 type OffersContextValue = OffersState & {
   refreshing: boolean;
-  /** Pull-to-refresh: always goes to the network. */
+  /** Deslizar para refrescar: siempre va a la red. */
   refresh: () => Promise<void>;
 };
 
@@ -36,9 +36,9 @@ function initialState(): OffersState {
 }
 
 /**
- * Offline-first offers store shared by the map and the Ofertas feed: shows the local cache
- * instantly and only reads Supabase when that cache is older than CACHE_TTL_MS (on launch
- * and when the app returns to the foreground) or on pull-to-refresh.
+ * Almacén de ofertas offline-first compartido por el mapa y la lista de Ofertas: muestra la caché local
+ * al instante y solo consulta Supabase cuando esa caché es más antigua que CACHE_TTL_MS (al abrir la app
+ * y al volver a primer plano) o al deslizar para refrescar.
  */
 export function OffersProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialState);
@@ -48,7 +48,7 @@ export function OffersProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(() => {
     if (!supabase) return Promise.resolve();
-    // Share one request if several callers ask at the same time.
+    // Comparte una sola petición si varios la piden al mismo tiempo.
     inFlight.current ??= fetchOffers()
       .then(
         (offers) => {

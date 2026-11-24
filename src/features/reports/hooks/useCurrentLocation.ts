@@ -9,11 +9,11 @@ export type CurrentLocationState =
   | { status: 'done'; coords: Coords; address: string | null }
   | { status: 'error'; message: string };
 
-/** On-demand location for attaching the user's position to a report. */
+/** Ubicación a pedido, para adjuntar la posición del usuario a un reporte. */
 export function useCurrentLocation() {
   const [state, setState] = useState<CurrentLocationState>({ status: 'idle' });
 
-  /** Resolves with the final state (done or error). */
+  /** Se resuelve con el estado final (listo o error). */
   const locate = useCallback(async (): Promise<CurrentLocationState> => {
     const finish = (next: CurrentLocationState) => {
       setState(next);
@@ -53,7 +53,7 @@ export function useCurrentLocation() {
   return { state, locate, clear };
 }
 
-/** Best-effort street label; the coordinates are what matter for the report. */
+/** Nombre de la calle, si se puede obtener; lo que importa para el reporte son las coordenadas. */
 async function reverseGeocode(coords: Coords): Promise<string | null> {
   try {
     const [place] = await Location.reverseGeocodeAsync(coords);

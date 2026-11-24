@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 
 /**
- * Returns the current user id, signing in anonymously the first time (no account needed).
- * The session is persisted, so each device keeps the same anonymous user.
+ * Devuelve el id del usuario actual; la primera vez inicia sesión de forma anónima (sin crear cuenta).
+ * La sesión se guarda, así cada dispositivo mantiene el mismo usuario anónimo.
  */
 export async function ensureUserId(): Promise<string> {
   if (!supabase) throw new Error('Supabase no está configurado.');

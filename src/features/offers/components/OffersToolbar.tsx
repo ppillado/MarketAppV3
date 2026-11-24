@@ -21,7 +21,7 @@ type Props = {
   onQueryChange: (query: string) => void;
   sort: OfferSort;
   onSortChange: (sort: OfferSort) => void;
-  /** "Más cercano" needs the user's position. */
+  /** "Más cercano" necesita la posición del usuario. */
   distanceSortEnabled: boolean;
   /** null = "Todas". */
   category: OfferCategory | null;

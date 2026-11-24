@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 type FormFieldProps = {
   label: string;
   hint?: string;
-  /** Validation message; shown in red instead of the hint. */
+  /** Mensaje de validación; se muestra en rojo en lugar de la ayuda. */
   error?: string | null;
   children: ReactNode;
 };

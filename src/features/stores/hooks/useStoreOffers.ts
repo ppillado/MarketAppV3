@@ -11,7 +11,7 @@ type StoreOffersState =
   | { status: 'error' }
   | { status: 'done'; offers: Offer[]; fetchedAt: number };
 
-/** Current offers of one store (get_store_offers); also syncs the user's votes on them. */
+/** Ofertas vigentes de un local (get_store_offers); también sincroniza los votos del usuario en ellas. */
 export function useStoreOffers(store: Store | null) {
   const syncVotes = useSyncVotes();
   const [state, setState] = useState<StoreOffersState>({ status: 'loading' });

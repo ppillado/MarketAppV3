@@ -26,7 +26,7 @@ export default function RootLayout() {
                   <Stack.Screen
                     name="store/[id]"
                     options={{
-                      // Native bottom sheet over the map: half height, drag up to full.
+                      // Hoja nativa sobre el mapa: ocupa media pantalla y se arrastra hacia arriba para verla completa.
                       presentation: 'formSheet',
                       sheetAllowedDetents: [0.6, 1],
                       sheetGrabberVisible: true,

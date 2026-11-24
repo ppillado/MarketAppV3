@@ -2,8 +2,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useState } from 'react';
 import { Alert, Linking } from 'react-native';
 
-// JPEG at 0.6 keeps a phone photo around 0.5–1.5 MB, well under the 5 MB bucket limit,
-// while the price tag stays readable.
+// JPEG al 0.6 deja una foto de celular en unos 0.5–1.5 MB, muy por debajo del límite de 5 MB del bucket,
+// y el precio de la etiqueta sigue siendo legible.
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
   quality: 0.6,
@@ -11,7 +11,7 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   exif: false,
 };
 
-/** Price-tag photo for a report: take one with the camera or pick one from the gallery. */
+/** Foto de la etiqueta de precio para un reporte: se toma con la cámara o se elige de la galería. */
 export function usePhotoPicker() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
@@ -34,7 +34,7 @@ export function usePhotoPicker() {
     if (!result.canceled) setPhotoUri(result.assets[0].uri);
   }, []);
 
-  // The system photo picker needs no permission on Android 13+ and iOS 14+.
+  // El selector de fotos del sistema no necesita permiso en Android 13+ ni en iOS 14+.
   const pickFromLibrary = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
     if (!result.canceled) setPhotoUri(result.assets[0].uri);

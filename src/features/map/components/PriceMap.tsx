@@ -10,7 +10,7 @@ import { ClusterPin } from './ClusterPin';
 import type { PriceMapProps } from './PriceMap.types';
 import { StorePin } from './StorePin';
 
-// Google Maps on Android, Apple Maps on iOS (no iOS Google key needed).
+// Google Maps en Android, Apple Maps en iOS (no se necesita clave de Google para iOS).
 const MAP_PROVIDER = Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT;
 
 export function PriceMap({
@@ -46,19 +46,19 @@ export function PriceMap({
       showsUserLocation={showsUserLocation}
       showsMyLocationButton={false}
       toolbarEnabled={false}
-      // Native controls (compass) stay below the floating category bar.
+      // Los controles nativos (brújula) quedan bajo la barra flotante de categorías.
       mapPadding={{ top: topInset, right: 0, bottom: 0, left: 0 }}
       onRegionChangeComplete={setRegion}>
       {items.map((item) => {
         if (item.kind === 'cluster') {
           return (
             <ClusterPin
-              // Custom marker views are snapshotted, so remount to restyle on count/theme change.
+              // Los marcadores personalizados se capturan como imagen: se remontan para cambiar de estilo al variar conteo o tema.
               key={`cluster-${item.id}-${item.count}-${scheme}`}
               coords={item.coords}
               count={item.count}
               onPress={() => {
-                // Zoom in just enough for this group to split apart.
+                // Acerca el zoom justo lo necesario para que este grupo se separe.
                 const delta = expansionDelta(item.id);
                 animateTo({ ...item.coords, latitudeDelta: delta, longitudeDelta: delta });
               }}

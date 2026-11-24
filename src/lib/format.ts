@@ -1,4 +1,4 @@
-/** 1990 -> "1.990" (Chilean thousands separator). Accepts a number or a digit string. */
+/** 1990 -> "1.990" (separador de miles chileno). Acepta un número o un texto de dígitos. */
 export function formatPrice(value: number | string) {
   return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }

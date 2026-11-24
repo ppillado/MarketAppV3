@@ -2,7 +2,7 @@ import type { Coords } from '@/types/geo';
 
 const EARTH_RADIUS_M = 6_371_000;
 
-/** Great-circle distance in meters (haversine). */
+/** Distancia en metros sobre la superficie de la Tierra (fórmula de haversine). */
 export function distanceInMeters(a: Coords, b: Coords) {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.latitude - a.latitude);

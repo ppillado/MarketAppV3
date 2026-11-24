@@ -1,6 +1,6 @@
--- MarketApp: publishing offers through server-side validation, and offer photos in Storage.
--- Requires Authentication → Sign In / Providers → "Allow anonymous sign-ins" enabled:
--- every device gets an anonymous user, used for rate limiting (and later, one vote per user).
+-- MarketApp: publicar ofertas con validación en el servidor, y fotos de ofertas en Storage.
+-- Requiere Authentication → Sign In / Providers → "Allow anonymous sign-ins" activado:
+-- cada dispositivo recibe un usuario anónimo, usado para limitar publicaciones (y más adelante, un voto por usuario).
 
 create extension if not exists pg_trgm with schema extensions;
 
@@ -9,8 +9,8 @@ alter table public.offers
 
 create index offers_created_by_idx on public.offers (created_by, created_at desc);
 
--- Validates and inserts an offer. The app has no direct insert access (see RLS on offers),
--- so every report goes through these checks. Errors carry a `hint` code the app maps to UI.
+-- Valida e inserta una oferta. La app no tiene permiso para insertar directamente (ver RLS de offers),
+-- así que todo reporte pasa por estas validaciones. Los errores llevan un código `hint` que la app traduce a la interfaz.
 create or replace function public.submit_offer(
   p_product text,
   p_price integer,
@@ -30,7 +30,7 @@ declare
   clean_store text := btrim(regexp_replace(coalesce(p_store_name, ''), '\s+', ' ', 'g'));
   point extensions.geography :=
     extensions.st_setsrid(extensions.st_makepoint(p_lng, p_lat), 4326)::extensions.geography;
-  -- Gran Concepción center (same as the app's default map region).
+  -- Centro del Gran Concepción (el mismo que la región inicial del mapa en la app).
   region_center extensions.geography :=
     extensions.st_setsrid(extensions.st_makepoint(-73.0444, -36.8201), 4326)::extensions.geography;
   recent_count integer;
@@ -56,7 +56,7 @@ begin
       using hint = 'out_of_area';
   end if;
 
-  -- Photos must live in this user's own folder of the offer-photos bucket.
+  -- Las fotos deben estar en la carpeta propia del usuario dentro del bucket offer-photos.
   if p_photo_url is not null
      and p_photo_url not like '%/storage/v1/object/public/offer-photos/' || uid::text || '/%' then
     raise exception 'La foto no es válida.' using hint = 'invalid_photo';
@@ -72,8 +72,8 @@ begin
       using hint = 'rate_limited';
   end if;
 
-  -- Outlier check: compare with similar products reported nearby in the last 30 days.
-  -- Only applies once there are at least 3 reports to compare against.
+  -- Precio fuera de rango: se compara con productos parecidos reportados cerca en los últimos 30 días.
+  -- Solo aplica cuando hay al menos 3 reportes para comparar.
   select count(*), percentile_cont(0.5) within group (order by o.price)
     into sample_count, median_price
   from public.offers o
@@ -100,7 +100,7 @@ revoke execute on function public.submit_offer(text, integer, text, double preci
 grant execute on function public.submit_offer(text, integer, text, double precision, double precision, text)
   to authenticated;
 
--- Offer photos: public read (shown on cards), uploads only into the user's own folder.
+-- Fotos de ofertas: lectura pública (se muestran en las tarjetas); se suben solo a la carpeta propia del usuario.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('offer-photos', 'offer-photos', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do nothing;

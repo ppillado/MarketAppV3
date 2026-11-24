@@ -1,8 +1,8 @@
--- MarketApp: stores ("locales") that group offers. The map shows one pin per store; each
--- store lists its current offers. offers.store_name / offers.location stay as a copy of the
--- store's, so nearby_offers and older app versions keep working.
+-- MarketApp: locales ("stores") que agrupan ofertas. El mapa muestra un pin por local; cada
+-- local lista sus ofertas vigentes. offers.store_name / offers.location se mantienen como copia de los
+-- del local, así nearby_offers y las versiones antiguas de la app siguen funcionando.
 
--- 1. Stores ----------------------------------------------------------------------------------
+-- 1. Locales ---------------------------------------------------------------------------------
 
 create table public.stores (
   id uuid primary key default gen_random_uuid(),
@@ -17,7 +17,7 @@ comment on table public.stores is 'Stores that group offers. Writes only via sub
 
 create index stores_location_idx on public.stores using gist (location);
 
--- Anyone can read; nobody can write directly from the app (stores are created by submit_offer).
+-- Cualquiera puede leer; nadie puede escribir directamente desde la app (los locales los crea submit_offer).
 alter table public.stores enable row level security;
 
 create policy "Stores are readable by everyone"
@@ -25,16 +25,16 @@ create policy "Stores are readable by everyone"
   to anon, authenticated
   using (true);
 
--- 2. Link offers to stores -------------------------------------------------------------------
+-- 2. Asociar ofertas a locales ---------------------------------------------------------------
 
 alter table public.offers
   add column store_id uuid references public.stores (id) on delete cascade;
 
--- Also serves "current offers of a store" (store_id + created_at window).
+-- También sirve para "ofertas vigentes de un local" (store_id + rango de created_at).
 create index offers_store_id_idx on public.offers (store_id, created_at desc);
 
--- Backfill: one store per group of existing offers with the same (normalized) store name
--- reported within ~150 m of each other, so different branches of a chain stay separate.
+-- Relleno inicial: un local por cada grupo de ofertas existentes con el mismo nombre de local (normalizado)
+-- reportadas a menos de ~150 m entre sí, así las distintas sucursales de una cadena quedan separadas.
 do $$
 declare
   grp record;
@@ -55,7 +55,7 @@ begin
     clustered as (
       select
         n.*,
-        -- eps in degrees: 0.0015° ≈ 165 m latitude / 135 m longitude in Gran Concepción.
+        -- eps en grados: 0.0015° ≈ 165 m de latitud / 135 m de longitud en el Gran Concepción.
         extensions.st_clusterdbscan(n.location::extensions.geometry, 0.0015, 1)
           over (partition by n.norm_name) as cluster_id
       from normalized n
@@ -84,13 +84,13 @@ begin
 end;
 $$;
 
--- Every offer belongs to a store from now on (submit_offer always sets it).
+-- Desde ahora toda oferta pertenece a un local (submit_offer siempre lo asigna).
 alter table public.offers alter column store_id set not null;
 
--- 3. Read RPCs -------------------------------------------------------------------------------
--- "Current" offer = reported in the last 7 days, same rule as nearby_offers' default.
+-- 3. RPCs de lectura -------------------------------------------------------------------------
+-- Oferta "vigente" = reportada en los últimos 7 días, la misma regla por defecto de nearby_offers.
 
--- Stores within the radius that have at least one current offer, nearest first (map pins).
+-- Locales dentro del radio con al menos una oferta vigente, más cercanos primero (pines del mapa).
 create or replace function public.nearby_stores(
   user_lat double precision,
   user_lng double precision,
@@ -139,7 +139,7 @@ as $$
   limit 1000;
 $$;
 
--- Current offers of one store, newest first, with the caller's vote (null if none / no session).
+-- Ofertas vigentes de un local, más nuevas primero, con el voto del usuario (null si no votó o no tiene sesión).
 create or replace function public.get_store_offers(p_store_id uuid)
 returns table (
   id uuid,
@@ -175,8 +175,8 @@ as $$
   limit 500;
 $$;
 
--- ALL stores within a short radius (with or without current offers), nearest first.
--- Used when publishing, so the user can pick an existing store instead of creating a duplicate.
+-- TODOS los locales en un radio corto (con o sin ofertas vigentes), más cercanos primero.
+-- Se usa al publicar, para que el usuario elija un local existente en vez de crear un duplicado.
 create or replace function public.find_nearby_stores(
   user_lat double precision,
   user_lng double precision,
@@ -232,16 +232,16 @@ grant execute on function public.nearby_stores(double precision, double precisio
 grant execute on function public.get_store_offers(uuid) to anon, authenticated;
 grant execute on function public.find_nearby_stores(double precision, double precision, integer) to anon, authenticated;
 
--- 4. submit_offer with stores ----------------------------------------------------------------
--- Replaced (not overloaded) so PostgREST never has two candidates for the same named call.
+-- 4. submit_offer con locales ----------------------------------------------------------------
+-- Se reemplaza (no se sobrecarga) para que PostgREST nunca tenga dos candidatas para la misma llamada.
 drop function public.submit_offer(text, integer, text, double precision, double precision, text);
 
--- Validates and inserts an offer.
--- * p_store_id given: the offer joins that store and inherits its name and location
---   (p_store_name / p_lat / p_lng / p_store_address are ignored).
--- * p_store_id null: a new store is created from p_store_name / p_lat / p_lng / p_store_address,
---   only after every check passes, in the same transaction as the offer.
--- Errors carry a `hint` code the app maps to UI.
+-- Valida e inserta una oferta.
+-- * Con p_store_id: la oferta se asocia a ese local y toma su nombre y ubicación
+--   (se ignoran p_store_name / p_lat / p_lng / p_store_address).
+-- * Con p_store_id null: se crea un local nuevo con p_store_name / p_lat / p_lng / p_store_address,
+--   solo después de pasar todas las validaciones, en la misma transacción que la oferta.
+-- Los errores llevan un código `hint` que la app traduce a la interfaz.
 create or replace function public.submit_offer(
   p_product text,
   p_price integer,
@@ -263,7 +263,7 @@ declare
   clean_store text := btrim(regexp_replace(coalesce(p_store_name, ''), '\s+', ' ', 'g'));
   clean_address text := nullif(btrim(regexp_replace(coalesce(p_store_address, ''), '\s+', ' ', 'g')), '');
   point extensions.geography;
-  -- Gran Concepción center (same as the app's default map region).
+  -- Centro del Gran Concepción (el mismo que la región inicial del mapa en la app).
   region_center extensions.geography :=
     extensions.st_setsrid(extensions.st_makepoint(-73.0444, -36.8201), 4326)::extensions.geography;
   target_store_id uuid := p_store_id;
@@ -319,7 +319,7 @@ begin
       using hint = 'out_of_area';
   end if;
 
-  -- Photos must live in this user's own folder of the offer-photos bucket.
+  -- Las fotos deben estar en la carpeta propia del usuario dentro del bucket offer-photos.
   if p_photo_url is not null
      and p_photo_url not like '%/storage/v1/object/public/offer-photos/' || uid::text || '/%' then
     raise exception 'La foto no es válida.' using hint = 'invalid_photo';
@@ -335,8 +335,8 @@ begin
       using hint = 'rate_limited';
   end if;
 
-  -- Outlier check: compare with similar products reported nearby in the last 30 days.
-  -- Only applies once there are at least 3 reports to compare against.
+  -- Precio fuera de rango: se compara con productos parecidos reportados cerca en los últimos 30 días.
+  -- Solo aplica cuando hay al menos 3 reportes para comparar.
   select count(*), percentile_cont(0.5) within group (order by o.price)
     into sample_count, median_price
   from public.offers o

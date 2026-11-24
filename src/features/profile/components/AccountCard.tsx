@@ -10,7 +10,7 @@ import type { AuthUser } from '@/features/auth/useAuthUser';
 
 const AVATAR_SIZE = 64;
 
-/** Who the user is right now: a guest (anonymous) or a Google-linked account. */
+/** Quién es el usuario ahora: invitado (anónimo) o cuenta vinculada con Google. */
 export function AccountCard({ user }: { user: AuthUser | null }) {
   const theme = useTheme();
   const google = user?.google ?? null;

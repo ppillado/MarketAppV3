@@ -12,17 +12,17 @@ type Props = {
   onPress: () => void;
 };
 
-/** Numbered circle for a group of nearby offers. Remount (via `key`) to restyle it. */
+/** Círculo numerado para un grupo de ofertas cercanas. Se vuelve a montar (vía `key`) para cambiar su estilo. */
 export function ClusterPin({ coords, count, onPress }: Props) {
   const theme = useTheme();
-  // Same Android snapshot handling as PricePin.
+  // Mismo manejo de snapshots de Android que en PricePin.
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setTracksViewChanges(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  // Grows gently with the group size: 40 px for 2 offers, capped at 60 px.
+  // Crece suavemente con el tamaño del grupo: 40 px para 2 ofertas, con un máximo de 60 px.
   const size = Math.min(60, 36 + Math.log2(count) * 6);
 
   return (

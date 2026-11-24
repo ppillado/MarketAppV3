@@ -13,23 +13,23 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
-  /** Selected category; null = "all" (only selectable when `allLabel` is given). */
+  /** Categoría seleccionada; null = "todas" (solo se puede elegir si se entrega `allLabel`). */
   value: OfferCategory | null;
   onChange: (value: OfferCategory | null) => void;
-  /** Adds a leading chip (e.g. "Todas") that selects null. */
+  /** Agrega un chip inicial (ej. "Todas") que selecciona null. */
   allLabel?: string;
-  /** Categories to offer, in order (defaults to all of them). */
+  /** Categorías a mostrar, en orden (por defecto, todas). */
   options?: readonly CategoryInfo[];
-  /** 'scroll': one horizontal row. 'wrap': chips wrap onto several lines. */
+  /** 'scroll': una sola fila horizontal. 'wrap': los chips pasan a varias líneas. */
   layout?: 'scroll' | 'wrap';
-  /** Solid chips with a shadow, for floating over the map. */
+  /** Chips sólidos con sombra, para flotar sobre el mapa. */
   floating?: boolean;
-  /** Extra padding inside the scroll row (e.g. to align with the screen gutter). */
+  /** Margen extra dentro de la fila con scroll (ej. para alinearla con el borde de la pantalla). */
   contentContainerStyle?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 };
 
-/** Single-choice category chips, styled like the Ofertas sort chips. */
+/** Chips de categoría de selección única, con el mismo estilo que los de orden en Ofertas. */
 export function CategoryChips({
   value,
   onChange,
@@ -79,7 +79,7 @@ export function CategoryChips({
   );
 }
 
-/** Multi-choice category chips (wrapping rows), e.g. the user's favorite categories. */
+/** Chips de categoría de selección múltiple (en varias filas), ej. las categorías favoritas del usuario. */
 export function MultiCategoryChips({
   value,
   onToggle,
@@ -117,7 +117,7 @@ function Chip({
   label: string;
   selected: boolean;
   floating: boolean;
-  /** Checkbox semantics (multi-select) instead of radio. */
+  /** Se comporta como casilla de verificación (selección múltiple) en vez de botón de opción. */
   multiple?: boolean;
   onPress: () => void;
 }) {

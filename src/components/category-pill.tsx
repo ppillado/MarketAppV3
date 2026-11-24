@@ -5,7 +5,7 @@ import { getCategoryInfo, type OfferCategory } from '@/constants/categories';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** Small, quiet label with an offer's category (shown on offer cards). */
+/** Etiqueta pequeña y discreta con la categoría de una oferta (se muestra en las tarjetas). */
 export function CategoryPill({ category }: { category: OfferCategory }) {
   const theme = useTheme();
   const info = getCategoryInfo(category);

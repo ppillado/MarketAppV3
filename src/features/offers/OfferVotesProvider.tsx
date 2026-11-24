@@ -20,8 +20,8 @@ import {
 export type { Vote } from './votesApi';
 
 /**
- * Counters after the user's vote, newer than the offers list until it refreshes.
- * `confirmed`: they come from set_offer_vote's response (not the optimistic guess).
+ * Contadores después del voto del usuario, más nuevos que la lista de ofertas hasta que esta se refresca.
+ * `confirmed`: vienen de la respuesta de set_offer_vote (no de la estimación optimista).
  */
 type CountsOverride = VoteCounts & { at: number; confirmed: boolean };
 
@@ -30,7 +30,7 @@ type OfferVotes = {
   counts: Record<string, CountsOverride>;
   pending: Record<string, true>;
   toggleVote: (offer: Offer, vote: Vote, shown: VoteCounts) => void;
-  /** Merges the server's votes for these offers (e.g. from get_store_offers). */
+  /** Combina los votos del servidor para estas ofertas (ej. desde get_store_offers). */
   syncVotes: (offerIds: string[], serverVotes: Record<string, Vote>) => void;
 };
 
@@ -39,9 +39,9 @@ const OfferVotesContext = createContext<OfferVotes | null>(null);
 const delta = (vote: Vote | null, kind: Vote) => (vote === kind ? 1 : 0);
 
 /**
- * The current user's votes, shared by the map card and the Ofertas feed. Votes apply
- * optimistically, are stored in Supabase (one per user per offer via set_offer_vote) and
- * cached locally so the pressed buttons show instantly and offline.
+ * Los votos del usuario actual, compartidos por la tarjeta del mapa y la lista de Ofertas. Los votos se aplican
+ * de forma optimista, se guardan en Supabase (uno por usuario y oferta, vía set_offer_vote) y
+ * en la caché local, para que los botones presionados se vean al instante y sin conexión.
  */
 export function OfferVotesProvider({ children }: { children: ReactNode }) {
   const [votes, setVotes] = useState<Record<string, Vote>>(readCachedVotes);
@@ -50,7 +50,7 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
   const { refresh: refreshOffers } = useOffersStore();
   const { refresh: refreshStores } = useStoresStore();
 
-  // Sync with the server copy (e.g. after reinstalling, or votes made on another session).
+  // Sincroniza con la copia del servidor (ej. después de reinstalar, o votos hechos en otra sesión).
   useEffect(() => {
     fetchMyVotes().then((serverVotes) => {
       if (!serverVotes) return;
@@ -73,7 +73,7 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
   const toggleVote = useCallback(
     (offer: Offer, vote: Vote, shown: VoteCounts) => {
       const previous = votes[offer.id] ?? null;
-      // Tapping your current vote again removes it; tapping the other one switches.
+      // Tocar de nuevo tu voto actual lo quita; tocar el otro lo cambia.
       const next = previous === vote ? null : vote;
       const setVote = (value: Vote | null) =>
         updateVotes(({ [offer.id]: _, ...rest }) =>
@@ -90,14 +90,14 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
           },
         }));
 
-      // Optimistic update.
+      // Actualización optimista.
       setVote(next);
       setOfferCounts({
         confirmations: shown.confirmations - delta(previous, 'confirm') + delta(next, 'confirm'),
         reports: shown.reports - delta(previous, 'report') + delta(next, 'report'),
       });
 
-      // Mock mode: votes stay local.
+      // Modo de prueba (mock): los votos quedan solo en el celular.
       if (!supabase) return;
 
       setPending((prev) => ({ ...prev, [offer.id]: true }));
@@ -105,8 +105,8 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
         .then(
           (result) => {
             setOfferCounts(result, true);
-            // The server hid it (same rule): lists drop it now via useIsOfferHidden, and the
-            // background refresh updates the store pins' counts and categories.
+            // El servidor la ocultó (misma regla): las listas la quitan ahora vía useIsOfferHidden, y la
+            // actualización en segundo plano corrige los conteos y categorías de los pines de locales.
             if (shouldHideOffer(result.confirmations, result.reports)) {
               Alert.alert(
                 'Oferta ocultada',
@@ -117,7 +117,7 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
             }
           },
           (error) => {
-            // Back to what was shown before (e.g. cannot_vote_own_offer, network errors).
+            // Vuelve a lo que se mostraba antes (ej. cannot_vote_own_offer, errores de red).
             setVote(previous);
             setOfferCounts(shown);
             Alert.alert(
@@ -153,7 +153,7 @@ export function OfferVotesProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Merges server votes for a set of offers into the shared vote state. */
+/** Combina los votos del servidor de un grupo de ofertas con el estado compartido de votos. */
 export function useSyncVotes() {
   const context = use(OfferVotesContext);
   if (!context) throw new Error('useSyncVotes must be used inside <OfferVotesProvider>');
@@ -161,9 +161,9 @@ export function useSyncVotes() {
 }
 
 /**
- * Vote state for one offer, with counts that include the current user's vote.
- * `fetchedAt`: when `offer` was loaded, if not from the shared offers list (e.g. a store's
- * offers); defaults to the offers list's last update.
+ * Estado del voto de una oferta, con conteos que incluyen el voto del usuario actual.
+ * `fetchedAt`: cuándo se cargó `offer`, si no viene de la lista compartida de ofertas (ej. las
+ * ofertas de un local); por defecto, la última actualización de la lista de ofertas.
  */
 export function useOfferVote(offer: Offer, fetchedAt?: number) {
   const context = use(OfferVotesContext);
@@ -171,7 +171,7 @@ export function useOfferVote(offer: Offer, fetchedAt?: number) {
   const { updatedAt } = useOffersStore();
 
   const override = context.counts[offer.id];
-  // Use the vote response until a newer copy of the offer arrives from the server.
+  // Usa la respuesta del voto hasta que llegue del servidor una copia más nueva de la oferta.
   const shown: VoteCounts =
     override && override.at > (fetchedAt ?? updatedAt ?? 0)
       ? override
@@ -186,9 +186,9 @@ export function useOfferVote(offer: Offer, fetchedAt?: number) {
 }
 
 /**
- * `isHidden(offer, fetchedAt?)`: true when the user's last vote (confirmed by the server, and
- * newer than this copy of the offer) left it meeting the server's hide rule. A newer list from
- * the server always wins, so an offer that becomes visible again comes back on refresh.
+ * `isHidden(offer, fetchedAt?)`: verdadero cuando el último voto del usuario (confirmado por el servidor y
+ * más nuevo que esta copia de la oferta) hizo que cumpla la regla de ocultamiento del servidor. Una lista más
+ * nueva del servidor siempre gana, así una oferta que vuelve a ser visible reaparece al refrescar.
  */
 export function useIsOfferHidden() {
   const context = use(OfferVotesContext);
@@ -209,7 +209,7 @@ export function useIsOfferHidden() {
   );
 }
 
-/** How many offers the current user has voted on. */
+/** Cuántas ofertas ha votado el usuario actual. */
 export function useMyVoteCount() {
   const context = use(OfferVotesContext);
   if (!context) throw new Error('useMyVoteCount must be used inside <OfferVotesProvider>');

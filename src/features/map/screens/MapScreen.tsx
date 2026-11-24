@@ -17,7 +17,10 @@ import { LocationPermissionBanner } from '../components/LocationPermissionBanner
 import { PriceMap } from '../components/PriceMap';
 import type { PriceMapHandle } from '../components/PriceMap.types';
 
-/** Height of the floating category bar (chip + vertical margin), used to pad the map controls. */
+/**
+ * Alto de la barra flotante de categorías (chip + margen vertical); se usa para separar
+ * los controles del mapa.
+ */
 const CATEGORY_BAR_HEIGHT = 48;
 
 export default function MapScreen() {
@@ -29,14 +32,15 @@ export default function MapScreen() {
   const { stores } = useStoresStore();
   const [category, setCategory] = useState<OfferCategory | null>(null);
 
-  // Only stores with a current offer in the chosen category (store.categories comes from
-  // nearby_stores, so this works instantly and from the offline cache).
+  // Solo los locales con una oferta vigente en la categoría elegida (store.categories viene de
+  // nearby_stores, así que el filtro es instantáneo y también funciona con la caché offline).
   const visibleStores = useMemo(
     () => (category ? stores.filter((store) => store.categories.includes(category)) : stores),
     [stores, category],
   );
 
-  // Center on the user the first time we get a fix; afterwards the user controls the camera.
+  // Centra el mapa en el usuario la primera vez que obtenemos su ubicación; después,
+  // el usuario controla la cámara.
   useEffect(() => {
     if (location.coords && !hasCentered.current) {
       hasCentered.current = true;
@@ -59,7 +63,7 @@ export default function MapScreen() {
         onSelectStore={(store) =>
           router.push({
             pathname: '/store/[id]',
-            // The store sheet opens on the same category filter (it can switch to "Todas").
+            // La ficha del local se abre con el mismo filtro de categoría (luego se puede cambiar a "Todas").
             params: category ? { id: store.id, category } : { id: store.id },
           })
         }
@@ -138,7 +142,7 @@ const styles = StyleSheet.create({
   },
   topBarChips: {
     paddingHorizontal: Spacing.three,
-    // Room for the chip shadows, which a ScrollView would otherwise clip.
+    // Espacio para las sombras de los chips; sin esto, el ScrollView las cortaría.
     paddingVertical: Spacing.one,
   },
   overlay: {

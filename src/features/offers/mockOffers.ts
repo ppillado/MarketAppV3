@@ -1,6 +1,6 @@
 import type { Offer } from '@/types/offer';
 
-// Fallback data while Supabase isn't configured (see src/lib/supabase.ts and supabase/seed.sql).
+// Datos de respaldo mientras Supabase no está configurado (ver src/lib/supabase.ts y supabase/seed.sql).
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
 

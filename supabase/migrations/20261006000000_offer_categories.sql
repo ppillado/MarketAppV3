@@ -1,21 +1,21 @@
--- MarketApp: offer categories. Every offer gets one normalized category slug, so the map and the
--- store lists can filter by category. Additive only: older app versions ignore the new columns
--- and submit_offer's new p_category parameter defaults to 'otros'.
+-- MarketApp: categorías de ofertas. Cada oferta recibe un slug de categoría normalizado, así el mapa y las
+-- listas de locales pueden filtrar por categoría. Solo agrega: las versiones antiguas de la app ignoran las columnas
+-- nuevas, y el nuevo parámetro p_category de submit_offer toma 'otros' por defecto.
 
--- 1. Column, index, backfill -----------------------------------------------------------------
+-- 1. Columna, índice y relleno inicial -------------------------------------------------------
 
--- Keep this slug list in sync with the check inside submit_offer below.
+-- Mantener esta lista de slugs sincronizada con la validación dentro de submit_offer, más abajo.
 alter table public.offers
   add column category text not null default 'otros'
   constraint offers_category_check check (category in (
     'abarrotes', 'lacteos', 'panaderia', 'bebidas', 'frutas_verduras', 'carnes', 'aseo', 'otros'
   ));
 
--- Current offers of a category (category + created_at window).
+-- Ofertas vigentes de una categoría (category + rango de created_at).
 create index offers_category_created_at_idx on public.offers (category, created_at desc);
 
--- Backfill existing offers from basic product-name keywords. Order matters on overlaps
--- (e.g. "café con leche" → bebidas, "jabón de leche" → aseo). Anything unmatched stays 'otros'.
+-- Relleno inicial de las ofertas existentes según palabras clave del nombre del producto. El orden importa si se
+-- cruzan (ej. "café con leche" → bebidas, "jabón de leche" → aseo). Lo que no coincide queda en 'otros'.
 update public.offers o
 set category = case
     when o.product ~* '\m(detergente|cloro|jab[oó]n|shampoo|champ[uú]|papel higi[eé]nico|lavalozas?|suavizante|desodorante|pasta dental|crema dental|limpiador)'
@@ -36,13 +36,13 @@ set category = case
   end
 where o.category = 'otros';
 
--- 2. Read RPCs -------------------------------------------------------------------------------
--- The returned columns change, which `create or replace` cannot do, so each one is dropped and
--- recreated (same body as before, plus the category column) and its grants are re-applied.
+-- 2. RPCs de lectura -------------------------------------------------------------------------
+-- Las columnas devueltas cambian, y `create or replace` no puede hacer eso, así que cada función se elimina y
+-- se vuelve a crear (mismo cuerpo que antes, más la columna category) y se vuelven a aplicar sus permisos.
 
 drop function public.nearby_offers(double precision, double precision, double precision, integer, integer);
 
--- Offers within `radius_m` meters of (lat, lng), newest first, ignoring stale reports.
+-- Ofertas a menos de `radius_m` metros de (lat, lng), más nuevas primero, ignorando reportes antiguos.
 create or replace function public.nearby_offers(
   lat double precision,
   lng double precision,
@@ -96,9 +96,9 @@ grant execute on function public.nearby_offers(double precision, double precisio
 
 drop function public.nearby_stores(double precision, double precision, integer);
 
--- Stores within the radius that have at least one current offer, nearest first (map pins).
--- `categories` = distinct categories of the store's current offers, so the map can filter pins
--- locally (and from the offline cache) without another request.
+-- Locales dentro del radio con al menos una oferta vigente, más cercanos primero (pines del mapa).
+-- `categories` = categorías distintas de las ofertas vigentes del local, así el mapa puede filtrar los pines
+-- localmente (y desde la caché offline) sin otra petición.
 create or replace function public.nearby_stores(
   user_lat double precision,
   user_lng double precision,
@@ -153,7 +153,7 @@ $$;
 
 drop function public.get_store_offers(uuid);
 
--- Current offers of one store, newest first, with the caller's vote (null if none / no session).
+-- Ofertas vigentes de un local, más nuevas primero, con el voto del usuario (null si no votó o no tiene sesión).
 create or replace function public.get_store_offers(p_store_id uuid)
 returns table (
   id uuid,
@@ -196,17 +196,17 @@ revoke execute on function public.get_store_offers(uuid) from public;
 grant execute on function public.nearby_stores(double precision, double precision, integer) to anon, authenticated;
 grant execute on function public.get_store_offers(uuid) to anon, authenticated;
 
--- 3. submit_offer with category --------------------------------------------------------------
--- Replaced (not overloaded) so PostgREST never has two candidates for the same named call.
+-- 3. submit_offer con categoría --------------------------------------------------------------
+-- Se reemplaza (no se sobrecarga) para que PostgREST nunca tenga dos candidatas para la misma llamada.
 drop function public.submit_offer(text, integer, text, double precision, double precision, text, uuid, text);
 
--- Validates and inserts an offer.
--- * p_store_id given: the offer joins that store and inherits its name and location
---   (p_store_name / p_lat / p_lng / p_store_address are ignored).
--- * p_store_id null: a new store is created from p_store_name / p_lat / p_lng / p_store_address,
---   only after every check passes, in the same transaction as the offer.
--- * p_category: one of the offers_category_check slugs; null / empty means 'otros'.
--- Errors carry a `hint` code the app maps to UI.
+-- Valida e inserta una oferta.
+-- * Con p_store_id: la oferta se asocia a ese local y toma su nombre y ubicación
+--   (se ignoran p_store_name / p_lat / p_lng / p_store_address).
+-- * Con p_store_id null: se crea un local nuevo con p_store_name / p_lat / p_lng / p_store_address,
+--   solo después de pasar todas las validaciones, en la misma transacción que la oferta.
+-- * p_category: uno de los slugs de offers_category_check; null o vacío significa 'otros'.
+-- Los errores llevan un código `hint` que la app traduce a la interfaz.
 create or replace function public.submit_offer(
   p_product text,
   p_price integer,
@@ -230,7 +230,7 @@ declare
   clean_address text := nullif(btrim(regexp_replace(coalesce(p_store_address, ''), '\s+', ' ', 'g')), '');
   clean_category text := coalesce(nullif(lower(btrim(p_category)), ''), 'otros');
   point extensions.geography;
-  -- Gran Concepción center (same as the app's default map region).
+  -- Centro del Gran Concepción (el mismo que la región inicial del mapa en la app).
   region_center extensions.geography :=
     extensions.st_setsrid(extensions.st_makepoint(-73.0444, -36.8201), 4326)::extensions.geography;
   target_store_id uuid := p_store_id;
@@ -251,7 +251,7 @@ begin
     raise exception 'El precio no es válido.' using hint = 'invalid_input';
   end if;
 
-  -- Keep in sync with offers_category_check.
+  -- Mantener sincronizado con offers_category_check.
   if clean_category not in (
     'abarrotes', 'lacteos', 'panaderia', 'bebidas', 'frutas_verduras', 'carnes', 'aseo', 'otros'
   ) then
@@ -293,7 +293,7 @@ begin
       using hint = 'out_of_area';
   end if;
 
-  -- Photos must live in this user's own folder of the offer-photos bucket.
+  -- Las fotos deben estar en la carpeta propia del usuario dentro del bucket offer-photos.
   if p_photo_url is not null
      and p_photo_url not like '%/storage/v1/object/public/offer-photos/' || uid::text || '/%' then
     raise exception 'La foto no es válida.' using hint = 'invalid_photo';
@@ -309,8 +309,8 @@ begin
       using hint = 'rate_limited';
   end if;
 
-  -- Outlier check: compare with similar products reported nearby in the last 30 days.
-  -- Only applies once there are at least 3 reports to compare against.
+  -- Precio fuera de rango: se compara con productos parecidos reportados cerca en los últimos 30 días.
+  -- Solo aplica cuando hay al menos 3 reportes para comparar.
   select count(*), percentile_cont(0.5) within group (order by o.price)
     into sample_count, median_price
   from public.offers o
@@ -343,5 +343,5 @@ revoke execute on function public.submit_offer(text, integer, text, double preci
 grant execute on function public.submit_offer(text, integer, text, double precision, double precision, text, uuid, text, text)
   to authenticated;
 
--- 4. Refresh PostgREST's schema cache so the new signatures are callable right away.
+-- 4. Recarga la caché de esquema de PostgREST para que las nuevas firmas se puedan llamar de inmediato.
 notify pgrst, 'reload schema';

@@ -7,7 +7,7 @@ import type { Offer } from '@/types/offer';
 
 import { useOfferVote } from '../OfferVotesProvider';
 
-/** Discreet community validation: "👍 Confirmar" / "👎 Agotado/Error". */
+/** Validación discreta de la comunidad: "👍 Confirmar" / "👎 Agotado/Error". */
 export function VoteBar({ offer, fetchedAt }: { offer: Offer; fetchedAt?: number }) {
   const { myVote, confirmations, reports, pending, toggle } = useOfferVote(offer, fetchedAt);
 

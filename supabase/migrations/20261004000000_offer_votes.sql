@@ -1,6 +1,6 @@
--- MarketApp: community validation votes ("👍 Confirmar" / "👎 Agotado/Error").
--- One vote per (anonymous) user per offer. offers.confirmations / offers.reports are kept
--- as running counters, so feeds never need to aggregate the votes table.
+-- MarketApp: votos de validación de la comunidad ("👍 Confirmar" / "👎 Agotado/Error").
+-- Un voto por usuario (anónimo) por oferta. offers.confirmations / offers.reports se mantienen
+-- como contadores acumulados, así las listas nunca necesitan sumar la tabla de votos.
 
 create table public.offer_votes (
   offer_id uuid not null references public.offers (id) on delete cascade,
@@ -13,8 +13,8 @@ create table public.offer_votes (
 
 create index offer_votes_user_idx on public.offer_votes (user_id);
 
--- Users can read only their own votes (to show which button they pressed).
--- No direct writes: votes go through set_offer_vote, which also updates the counters.
+-- Cada usuario solo puede leer sus propios votos (para mostrar qué botón presionó).
+-- Sin escritura directa: los votos pasan por set_offer_vote, que también actualiza los contadores.
 alter table public.offer_votes enable row level security;
 
 create policy "Users read their own votes"
@@ -22,8 +22,8 @@ create policy "Users read their own votes"
   to authenticated
   using ((select auth.uid()) = user_id);
 
--- Sets ('confirm' | 'report') or clears (null) the caller's vote on an offer and returns the
--- offer's updated counters. Counters change by delta, so seeded counts are preserved.
+-- Registra ('confirm' | 'report') o borra (null) el voto del usuario en una oferta y devuelve los
+-- contadores actualizados. Los contadores cambian por diferencia, así se respetan los valores de ejemplo.
 create or replace function public.set_offer_vote(p_offer_id uuid, p_vote text)
 returns table (confirmations integer, reports integer)
 language plpgsql
@@ -44,7 +44,7 @@ begin
     raise exception 'Voto no válido.' using hint = 'invalid_input';
   end if;
 
-  -- Lock the offer row so concurrent votes on it apply one after another.
+  -- Bloquea la fila de la oferta para que votos simultáneos se apliquen uno después del otro.
   select o.created_by into offer_owner
   from public.offers o
   where o.id = p_offer_id

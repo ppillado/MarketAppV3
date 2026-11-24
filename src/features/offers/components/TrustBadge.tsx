@@ -9,8 +9,8 @@ import { isOfferUnderReview, isOfferVerified } from '../offerTrust';
 import { useOfferVote } from '../OfferVotesProvider';
 
 /**
- * "✓ Verificada" (community-confirmed) or "⚠ En revisión" (more reports than confirmations).
- * Uses the live counts, so it updates as soon as the user votes. Renders nothing otherwise.
+ * "✓ Verificada" (confirmada por la comunidad) o "⚠ En revisión" (más reportes que confirmaciones).
+ * Usa los conteos en vivo, así se actualiza apenas el usuario vota. En otro caso no muestra nada.
  */
 export function TrustBadge({ offer, fetchedAt }: { offer: Offer; fetchedAt?: number }) {
   const theme = useTheme();

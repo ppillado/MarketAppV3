@@ -16,11 +16,11 @@ type Props = {
 const BUBBLE_SIZE = 40;
 const BADGE_SIZE = 22;
 
-/** Store pin: storefront bubble with a badge counting its current offers. Remount (via `key`) to restyle it. */
+/** Pin de local: burbuja de tienda con una insignia que cuenta sus ofertas vigentes. Se remonta (vía `key`) para cambiar su estilo. */
 export function StorePin({ store, onPress }: Props) {
   const theme = useTheme();
-  // Android snapshots custom marker views; keep tracking until the first render has painted,
-  // then stop so the map doesn't re-render every pin on every frame.
+  // Android captura los marcadores personalizados como imagen; se sigue actualizando hasta que el primer render se dibuja,
+  // y luego se detiene para que el mapa no vuelva a dibujar cada pin en cada cuadro.
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setTracksViewChanges(false), 500);
@@ -36,7 +36,7 @@ export function StorePin({ store, onPress }: Props) {
       tracksViewChanges={tracksViewChanges}
       onPress={onPress}
       accessibilityLabel={`${store.name}, ${count} ${count === 1 ? 'oferta' : 'ofertas'}`}>
-      {/* Padding leaves room for the badge, which overflows the bubble's corner. */}
+      {/* El padding deja espacio para la insignia, que sobresale de la esquina de la burbuja. */}
       <View style={styles.container}>
         <View
           style={[styles.bubble, { backgroundColor: theme.background, borderColor: theme.accent }]}>

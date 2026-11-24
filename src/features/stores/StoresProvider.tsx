@@ -6,21 +6,21 @@ import type { Store } from '@/types/store';
 
 import { fetchStores, mockStores, readCachedStores, writeCachedStores } from './storesApi';
 
-/** Cached stores younger than this are shown without hitting Supabase. */
+/** Los locales en caché más nuevos que esto se muestran sin consultar a Supabase. */
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 type StoresState = {
   stores: Store[];
-  /** Where the shown stores come from. */
+  /** De dónde vienen los locales que se muestran. */
   source: 'mock' | 'cache' | 'network';
-  /** When the shown stores were fetched from Supabase (null for mock data / empty cache). */
+  /** Cuándo se pidieron a Supabase los locales mostrados (null para datos de prueba / caché vacía). */
   updatedAt: number | null;
   error: string | null;
 };
 
 type StoresContextValue = StoresState & {
   refreshing: boolean;
-  /** Always goes to the network (e.g. after publishing an offer). */
+  /** Siempre va a la red (ej. después de publicar una oferta). */
   refresh: () => Promise<void>;
 };
 
@@ -35,9 +35,9 @@ function initialState(): StoresState {
 }
 
 /**
- * Offline-first store pins for the map (same strategy as OffersProvider): shows the local
- * cache instantly and only reads Supabase when it is older than CACHE_TTL_MS (on launch and
- * when the app returns to the foreground) or when refreshed explicitly.
+ * Pines de locales offline-first para el mapa (misma estrategia que OffersProvider): muestra la caché
+ * local al instante y solo consulta Supabase cuando es más antigua que CACHE_TTL_MS (al abrir la app y
+ * al volver a primer plano) o cuando se refresca a propósito.
  */
 export function StoresProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialState);
@@ -47,7 +47,7 @@ export function StoresProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(() => {
     if (!supabase) return Promise.resolve();
-    // Share one request if several callers ask at the same time.
+    // Comparte una sola petición si varios la piden al mismo tiempo.
     inFlight.current ??= fetchStores()
       .then(
         (stores) => {

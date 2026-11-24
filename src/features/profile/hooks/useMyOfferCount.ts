@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
-/** Number of offers published by `userId` (null while loading or offline). */
+/** Cantidad de ofertas publicadas por `userId` (null mientras carga o sin conexión). */
 export function useMyOfferCount(userId: string | null) {
   const [count, setCount] = useState<number | null>(null);
 
@@ -21,6 +21,6 @@ export function useMyOfferCount(userId: string | null) {
     };
   }, [userId]);
 
-  // Never published from this device yet: nothing to count.
+  // Todavía no ha publicado desde este dispositivo: no hay nada que contar.
   return userId ? count : 0;
 }

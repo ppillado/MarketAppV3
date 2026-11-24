@@ -1,5 +1,5 @@
--- Demo data: the same 8 offers the app used as mock data (Gran Concepción), one store each.
--- Note: extensions.st_makepoint takes (longitude, latitude).
+-- Datos de demostración: las mismas 8 ofertas que la app usaba como datos de prueba (Gran Concepción), un local cada una.
+-- Nota: extensions.st_makepoint recibe (longitud, latitud).
 
 with demo (product, price, store_name, lng, lat, confirmations, reports, age, category) as (
   values

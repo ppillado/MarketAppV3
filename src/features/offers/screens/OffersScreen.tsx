@@ -17,6 +17,18 @@ import { useOffers, type OfferWithDistance } from '../hooks/useOffers';
 import { useIsOfferHidden } from '../OfferVotesProvider';
 import { isFavoriteCategory, sortOffersForUser } from '../recommendOffers';
 
+/**
+ * Pantalla "Ofertas": lista de precios reportados por la comunidad cerca del usuario.
+ * Permite buscar por producto, filtrar por categoría y ordenar (recientes, precio,
+ * distancia o "Para ti"). Todo el filtrado y orden se hace en el celular, sobre los datos
+ * en caché, por eso responde al instante y funciona sin conexión.
+ */
+
+// ── 1. Criterios de orden ───────────────────────────────────────────────────────────────────────
+// Cada opción del menú "Ordenar" tiene su función de comparación. Si dos ofertas empatan,
+// siempre se desempata dejando primero la más reciente.
+
+/** Más recientes primero. */
 const byRecent = (a: OfferWithDistance, b: OfferWithDistance) =>
   b.offer.createdAt.getTime() - a.offer.createdAt.getTime();
 
@@ -25,7 +37,9 @@ const COMPARATORS: Record<
   (a: OfferWithDistance, b: OfferWithDistance) => number
 > = {
   recent: byRecent,
+  // Más baratas primero.
   price: (a, b) => a.offer.price - b.offer.price || byRecent(a, b),
+  // Más cercanas primero (si falta la distancia de alguna, se usa la fecha).
   distance: (a, b) =>
     a.distanceMeters === null || b.distanceMeters === null
       ? byRecent(a, b)
@@ -33,8 +47,11 @@ const COMPARATORS: Record<
 };
 
 export default function OffersScreen() {
+  // ── 2. Estado de la pantalla y datos ──────────────────────────────────────────────────────────
+  // Lo que el usuario escribe o elige (búsqueda, orden, categoría) se guarda en estado local.
+  // Las ofertas, la ubicación y las preferencias vienen de los "proveedores" globales de la app.
   const theme = useTheme();
-  // Fixed reference time (reset on refresh), so "hace X min" stays consistent while scrolling.
+  // Hora de referencia fija (se renueva al refrescar), para que "hace X min" no cambie mientras se hace scroll.
   const [now, setNow] = useState(() => Date.now());
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OfferSort>('recent');
@@ -43,13 +60,22 @@ export default function OffersScreen() {
   const { favoriteCategories, isLoading: preferencesLoading } = usePreferences();
   const isHidden = useIsOfferHidden();
 
+  // Al deslizar hacia abajo: se vuelven a pedir las ofertas al servidor y se actualiza la hora.
   const onRefresh = async () => {
     await refresh();
     setNow(Date.now());
   };
 
-  // Without a GPS fix there is nothing to sort by distance; fall back to recency.
+  // ── 3. Buscar, filtrar y ordenar ──────────────────────────────────────────────────────────────
+  // Se parte de todas las ofertas cercanas (ya con su distancia calculada) y se aplican, en orden:
+  //  a) se quitan las ocultas por reportes de la comunidad,
+  //  b) se filtra por la categoría elegida,
+  //  c) se filtra por el texto buscado (sin importar mayúsculas ni tildes),
+  //  d) se ordena según la opción elegida.
+
+  // Sin ubicación GPS no se puede ordenar por distancia; en ese caso se usa "recientes".
   const effectiveSort = sort === 'distance' && !hasLocation ? 'recent' : sort;
+  // normalizeText pasa a minúsculas y quita tildes: "Pan Amasado" coincide con "pan amasado".
   const search = normalizeText(query);
   const matching = withDistance.filter(
     ({ offer }) =>
@@ -58,13 +84,18 @@ export default function OffersScreen() {
       normalizeText(offer.product).includes(search),
   );
   const forYou = effectiveSort === 'forYou';
-  // "Para ti" without favorites still ranks by distance, freshness and votes.
+  // "Para ti" usa el algoritmo de recommendOffers.ts. Aunque el usuario no tenga favoritas,
+  // igual ordena por cercanía, frescura y votos.
   const visible = forYou
     ? sortOffersForUser(matching, favoriteCategories, now)
     : matching.sort(COMPARATORS[effectiveSort]);
+  // Indica si hay algún filtro activo (cambia el mensaje cuando la lista queda vacía).
   const filtered = search !== '' || category !== null;
+  // En "Para ti" sin intereses guardados, se invita al usuario a elegirlos en su Perfil.
   const showInterestsBanner = forYou && favoriteCategories.length === 0 && !preferencesLoading;
 
+  // ── 4. Interfaz ───────────────────────────────────────────────────────────────────────────────
+  // Encabezado (título, barra de búsqueda/orden/categorías, avisos) y la lista de ofertas.
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.container}>
@@ -114,6 +145,7 @@ export default function OffersScreen() {
           )}
         </View>
 
+        {/* FlatList solo dibuja las tarjetas visibles en pantalla, así la lista es fluida aunque haya cientos de ofertas. */}
         <FlatList
           data={visible}
           keyExtractor={({ offer }) => offer.id}
@@ -159,6 +191,9 @@ export default function OffersScreen() {
   );
 }
 
+// ── 5. Funciones de apoyo ───────────────────────────────────────────────────────────────────────
+
+/** Mensaje para cuando la lista queda vacía; se adapta a la búsqueda y a la categoría elegidas. */
 function emptyMessage(query: string, hasSearch: boolean, category: OfferCategory | null) {
   const inCategory = category ? ` en ${getCategoryLabel(category)}` : '';
   if (hasSearch) return `No hay ofertas para “${query}”${inCategory}. Prueba con otro producto.`;
@@ -166,10 +201,12 @@ function emptyMessage(query: string, hasSearch: boolean, category: OfferCategory
   return 'Sé el primero en reportar un precio desde la pestaña Reportar.';
 }
 
+/** Espacio vertical entre tarjetas de la lista. */
 function Separator() {
   return <View style={styles.separator} />;
 }
 
+// ── 6. Estilos ──────────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,

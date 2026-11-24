@@ -1,12 +1,24 @@
--- MarketApp: anti-troll moderation.
--- * Community auto-hide: an offer with enough "Agotado/Error" reports is hidden from every read
---   RPC, and comes back if votes change and the rule no longer holds.
--- * Self-votes stay blocked (now with hint 'cannot_vote_own_offer').
--- * submit_offer gets stricter price / product-name checks, duplicate detection and a short
---   rate limit. Its signature (9 parameters, including p_category) is unchanged.
--- Additive for the app: every read RPC keeps its signature and returned columns.
+-- MarketApp: moderación anti-troll.
+-- * Ocultamiento automático por la comunidad: una oferta con suficientes reportes de
+--   "Agotado/Error" deja de aparecer en todas las funciones de lectura, y vuelve a aparecer si los
+--   votos cambian y la regla ya no se cumple.
+-- * Se sigue bloqueando que un usuario vote su propia oferta (ahora con hint 'cannot_vote_own_offer').
+-- * submit_offer agrega validaciones más estrictas de precio y nombre de producto, detección de
+--   duplicados y un límite de publicaciones por tiempo. Sus 9 parámetros (incluido p_category)
+--   no cambian.
+-- No rompe la app: cada función de lectura mantiene sus parámetros y las columnas que devuelve.
+--
+-- Resumen del archivo:
+--   1. Columnas nuevas en offers (hidden_at, hidden_reason).
+--   2. Regla de ocultamiento (offer_should_hide).
+--   3. Votar (set_offer_vote) y recalcular si la oferta se oculta.
+--   4. Funciones de lectura que ya no muestran ofertas ocultas (nearby_offers, nearby_stores...).
+--   5. Publicar (submit_offer) con validaciones anti-troll.
+--   6. Recargar el esquema de la API.
 
--- 1. Columns, constraints, index ---------------------------------------------------------------
+-- 1. Columnas, restricciones e índice ----------------------------------------------------------
+-- hidden_at = cuándo se ocultó la oferta (null = visible); hidden_reason = por qué se ocultó.
+-- La restricción de consistencia obliga a que ambas estén llenas o ambas vacías.
 
 alter table public.offers
   add column hidden_at timestamptz,
@@ -21,15 +33,19 @@ comment on column public.offers.hidden_at is
 comment on column public.offers.hidden_reason is
   'Why the offer is hidden: community_reports (auto, see offer_should_hide).';
 
--- Visible offers of a store within a time window (nearby_stores / get_store_offers).
+-- Índice para buscar rápido las ofertas visibles de un local en un rango de fechas
+-- (lo usan nearby_stores y get_store_offers). Solo incluye ofertas no ocultas.
 create index offers_visible_store_created_at_idx
   on public.offers (store_id, created_at desc)
   where hidden_at is null;
 
--- 2. Hide rule ---------------------------------------------------------------------------------
+-- 2. Regla de ocultamiento ---------------------------------------------------------------------
 
--- Single source of truth for community auto-hide: at least 3 reports and reports outnumber
--- confirmations by 2 or more (so a well-confirmed offer survives a few trolls).
+-- Única fuente de verdad del ocultamiento automático: se oculta si tiene al menos 3 reportes
+-- Y los reportes superan a las confirmaciones por 2 o más. Así, una oferta bien confirmada
+-- resiste a unos pocos trolls. (La app replica esta regla en src/features/offers/offerTrust.ts
+-- para ocultar la oferta al instante, sin esperar al servidor.)
+-- Ejemplos: 3 reportes y 0 confirmaciones → se oculta; 3 reportes y 2 confirmaciones → sigue visible.
 create or replace function public.offer_should_hide(p_confirmations integer, p_reports integer)
 returns boolean
 language sql
@@ -40,22 +56,27 @@ as $$
      and coalesce(p_reports, 0) - coalesce(p_confirmations, 0) >= 2;
 $$;
 
--- Internal helper: only called from SECURITY DEFINER functions (which run as the owner).
+-- Función interna: la app no puede llamarla directamente; solo la usan otras funciones
+-- SECURITY DEFINER (que se ejecutan con permisos del dueño de la base de datos).
 revoke execute on function public.offer_should_hide(integer, integer) from public, anon, authenticated;
 
--- Backfill: hide existing offers that already meet the rule.
+-- Relleno inicial: oculta las ofertas que ya existían y que ya cumplen la regla.
 update public.offers o
 set hidden_at = now(), hidden_reason = 'community_reports'
 where o.hidden_at is null
   and public.offer_should_hide(o.confirmations, o.reports);
 
--- 3. Votes: recompute visibility, block self-votes -----------------------------------------------
--- Same signature and return type, so `create or replace` keeps existing grants (re-applied below).
+-- 3. Votos: recalcular visibilidad y bloquear el voto propio -------------------------------------
+-- Mismos parámetros y tipo de retorno, así `create or replace` conserva los permisos existentes
+-- (igual se vuelven a aplicar más abajo).
 
--- Sets ('confirm' | 'report') or clears (null) the caller's vote on an offer and returns the
--- offer's updated counters. Counters change by delta, so seeded counts are preserved.
--- After the counters change, hidden_at / hidden_reason are recomputed under the same row lock.
--- Votes on hidden offers are still accepted, so retracting a report can bring an offer back.
+-- Registra ('confirm' = confirmar | 'report' = reportar) o borra (null) el voto del usuario en
+-- una oferta, y devuelve los contadores actualizados. Los contadores cambian sumando o restando
+-- la diferencia, así se respetan los valores de ejemplo cargados al inicio.
+-- Después de actualizar los contadores, se recalcula hidden_at / hidden_reason con la misma fila
+-- bloqueada. Se aceptan votos en ofertas ocultas, así retirar un reporte puede hacerla reaparecer.
+-- Pasos: validar usuario y voto → bloquear la oferta → impedir voto propio → guardar el voto
+--        → actualizar contadores → recalcular si se oculta → devolver contadores.
 create or replace function public.set_offer_vote(p_offer_id uuid, p_vote text)
 returns table (confirmations integer, reports integer)
 language plpgsql
@@ -76,7 +97,8 @@ begin
     raise exception 'Voto no válido.' using hint = 'invalid_input';
   end if;
 
-  -- Lock the offer row so concurrent votes on it apply one after another.
+  -- Bloquea la fila de la oferta para que votos simultáneos se apliquen uno después del otro
+  -- (evita que dos votos al mismo tiempo dejen mal los contadores).
   select o.created_by into offer_owner
   from public.offers o
   where o.id = p_offer_id
@@ -86,15 +108,17 @@ begin
     raise exception 'Esta oferta ya no existe.' using hint = 'not_found';
   end if;
 
-  -- The author can neither confirm nor report their own offer.
+  -- El autor no puede confirmar ni reportar su propia oferta.
   if offer_owner = uid then
     raise exception 'No puedes votar tu propia oferta.' using hint = 'cannot_vote_own_offer';
   end if;
 
+  -- Voto anterior del usuario (si tenía), para descontarlo de los contadores.
   select v.vote into previous
   from public.offer_votes v
   where v.offer_id = p_offer_id and v.user_id = uid;
 
+  -- Guardar el voto: si es null se borra; si no, se crea o se reemplaza (un voto por usuario).
   if p_vote is null then
     delete from public.offer_votes v where v.offer_id = p_offer_id and v.user_id = uid;
   else
@@ -104,6 +128,7 @@ begin
       set vote = excluded.vote, updated_at = now();
   end if;
 
+  -- Actualizar contadores: se resta el voto anterior y se suma el nuevo (nunca bajan de 0).
   update public.offers o
   set
     confirmations = greatest(0, o.confirmations
@@ -114,8 +139,9 @@ begin
       + (case when p_vote = 'report' then 1 else 0 end))
   where o.id = p_offer_id;
 
-  -- Recompute visibility from the new counters. Keeps the original hidden_at while still hidden,
-  -- and only un-hides offers hidden by community reports (never a future manual hide).
+  -- Recalcular la visibilidad con los contadores nuevos. Mientras siga oculta, conserva la fecha
+  -- original de hidden_at, y solo vuelve a mostrar ofertas ocultadas por reportes de la comunidad
+  -- (nunca una ocultada a mano en el futuro por un moderador).
   update public.offers o
   set
     hidden_at = case
@@ -130,19 +156,24 @@ begin
     end
   where o.id = p_offer_id;
 
+  -- Devuelve los contadores actualizados para que la app los muestre al instante.
   return query
   select o.confirmations, o.reports from public.offers o where o.id = p_offer_id;
 end;
 $$;
 
+-- Permisos: solo usuarios con sesión (incluidos los anónimos) pueden votar.
 revoke execute on function public.set_offer_vote(uuid, text) from public, anon;
 grant execute on function public.set_offer_vote(uuid, text) to authenticated;
 
--- 4. Read RPCs exclude hidden offers -------------------------------------------------------------
--- Same signatures and returned columns as 20261006000000_offer_categories.sql, plus
--- `o.hidden_at is null`. Store counts and categories therefore always match the listed offers.
+-- 4. Las funciones de lectura excluyen las ofertas ocultas ---------------------------------------
+-- Mismos parámetros y columnas que en 20261006000000_offer_categories.sql, más el filtro
+-- `o.hidden_at is null`. Así, los conteos y categorías de cada local siempre coinciden con las
+-- ofertas que se muestran.
 
--- Offers within `radius_m` meters of (lat, lng), newest first, ignoring stale and hidden reports.
+-- Ofertas a menos de `radius_m` metros de (lat, lng), más nuevas primero, sin las antiguas
+-- (más de 7 días) ni las ocultas. Alimenta la pestaña "Ofertas".
+-- st_dwithin (PostGIS) calcula si un punto está dentro de un radio en metros sobre el mapa.
 create or replace function public.nearby_offers(
   lat double precision,
   lng double precision,
@@ -195,8 +226,9 @@ $$;
 grant execute on function public.nearby_offers(double precision, double precision, double precision, integer, integer)
   to anon, authenticated;
 
--- Stores within the radius that have at least one current visible offer, nearest first (map pins).
--- `categories` = distinct categories of the store's current visible offers.
+-- Locales dentro del radio que tienen al menos una oferta vigente y visible, más cercanos primero.
+-- Alimenta los pines del mapa (un pin por local).
+-- `categories` = categorías distintas de las ofertas vigentes del local (para el filtro del mapa).
 create or replace function public.nearby_stores(
   user_lat double precision,
   user_lng double precision,
@@ -250,7 +282,8 @@ as $$
   limit 1000;
 $$;
 
--- Current visible offers of one store, newest first, with the caller's vote (null if none / no session).
+-- Ofertas vigentes y visibles de un local, más nuevas primero, junto con el voto del usuario
+-- (null si no votó o no tiene sesión). Alimenta la "Ficha de local".
 create or replace function public.get_store_offers(p_store_id uuid)
 returns table (
   id uuid,
@@ -289,8 +322,9 @@ as $$
   limit 500;
 $$;
 
--- ALL stores within a short radius (with or without current offers), nearest first.
--- Used when publishing; active_offers_count counts visible offers only, like nearby_stores.
+-- TODOS los locales en un radio corto (tengan o no ofertas vigentes), más cercanos primero.
+-- Se usa al publicar, para sugerir locales cercanos y no crear duplicados.
+-- active_offers_count cuenta solo ofertas visibles, igual que nearby_stores.
 create or replace function public.find_nearby_stores(
   user_lat double precision,
   user_lng double precision,
@@ -340,6 +374,7 @@ as $$
   limit 50;
 $$;
 
+-- Permisos: las funciones de lectura las puede usar cualquiera, con o sin sesión.
 revoke execute on function public.nearby_stores(double precision, double precision, integer) from public;
 revoke execute on function public.get_store_offers(uuid) from public;
 revoke execute on function public.find_nearby_stores(double precision, double precision, integer) from public;
@@ -347,18 +382,22 @@ grant execute on function public.nearby_stores(double precision, double precisio
 grant execute on function public.get_store_offers(uuid) to anon, authenticated;
 grant execute on function public.find_nearby_stores(double precision, double precision, integer) to anon, authenticated;
 
--- 5. submit_offer with anti-troll checks ----------------------------------------------------------
--- Same signature and return type as before, so `create or replace` replaces it in place.
+-- 5. submit_offer con validaciones anti-troll -----------------------------------------------------
+-- Mismos parámetros y tipo de retorno que antes, así `create or replace` la reemplaza en su lugar.
+-- Nota: la versión final y vigente de submit_offer está en 20261009000000_submit_offer_store_reuse.sql.
 
--- Validates and inserts an offer.
--- * p_store_id given: the offer joins that store and inherits its name and location
---   (p_store_name / p_lat / p_lng / p_store_address are ignored).
--- * p_store_id null: a new store is created from p_store_name / p_lat / p_lng / p_store_address,
---   only after every check passes, in the same transaction as the offer.
--- * p_category: one of the offers_category_check slugs; null / empty means 'otros'.
--- Errors carry a `hint` code the app maps to UI:
+-- Valida y guarda una oferta. Es la ÚNICA forma de crear ofertas: la app no tiene permiso para
+-- insertar directamente en la tabla offers, así que todo reporte pasa por estas validaciones.
+-- * Con p_store_id: la oferta se asocia a ese local y toma su nombre y ubicación
+--   (se ignoran p_store_name / p_lat / p_lng / p_store_address).
+-- * Con p_store_id null: se crea un local nuevo con p_store_name / p_lat / p_lng / p_store_address,
+--   solo después de pasar todas las validaciones y en la misma transacción que la oferta.
+-- * p_category: una de las categorías permitidas por offers_category_check; vacía = 'otros'.
+-- Los errores llevan un código `hint` que la app traduce a mensajes en pantalla:
 --   not_authenticated, invalid_product_name, invalid_price, invalid_category, invalid_input,
 --   store_not_found, out_of_area, invalid_photo, rate_limited, duplicate_offer, price_outlier.
+-- Orden de las validaciones: sesión → nombre → precio → categoría → local → zona → foto
+--   → límite de publicaciones → duplicados → precio fuera de rango → guardar.
 create or replace function public.submit_offer(
   p_product text,
   p_price integer,
@@ -382,7 +421,7 @@ declare
   clean_address text := nullif(btrim(regexp_replace(coalesce(p_store_address, ''), '\s+', ' ', 'g')), '');
   clean_category text := coalesce(nullif(lower(btrim(p_category)), ''), 'otros');
   point extensions.geography;
-  -- Gran Concepción center (same as the app's default map region).
+  -- Centro del Gran Concepción (el mismo que la región inicial del mapa en la app).
   region_center extensions.geography :=
     extensions.st_setsrid(extensions.st_makepoint(-73.0444, -36.8201), 4326)::extensions.geography;
   target_store_id uuid := p_store_id;
@@ -395,9 +434,10 @@ begin
     raise exception 'Debes iniciar sesión para publicar.' using hint = 'not_authenticated';
   end if;
 
-  -- Product name: 2–80 chars, at least 2 letters (no "12345" / "!!!"), and no run of 4+ of the
-  -- same letter ("aaaa"). Explicit letter class so accents work regardless of the DB locale;
-  -- digits are not checked for runs, so "Pack 10000" stays valid.
+  -- Nombre del producto: de 2 a 80 caracteres, con al menos 2 letras (rechaza "12345" o "!!!")
+  -- y sin 4 o más letras iguales seguidas ("aaaa"). Las letras con tilde se listan a mano para que
+  -- funcionen sin importar la configuración de idioma de la base de datos. Los números no se
+  -- revisan, así "Pack 10000" sigue siendo válido.
   if char_length(clean_product) not between 2 and 80
      or char_length(regexp_replace(clean_product, '[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]', '', 'g')) < 2
      or clean_product ~* '([a-zA-ZáéíóúüñÁÉÍÓÚÜÑ])\1{3,}' then
@@ -405,18 +445,19 @@ begin
       using hint = 'invalid_product_name';
   end if;
 
-  -- Realistic supermarket / neighborhood-store prices, in CLP.
+  -- Precios realistas de supermercado o almacén de barrio, en pesos chilenos (CLP).
   if p_price is null or p_price < 50 or p_price > 500000 then
     raise exception 'El precio debe estar entre $50 y $500.000.' using hint = 'invalid_price';
   end if;
 
-  -- Keep in sync with offers_category_check.
+  -- Debe coincidir con la restricción offers_category_check de la tabla.
   if clean_category not in (
     'abarrotes', 'lacteos', 'panaderia', 'bebidas', 'frutas_verduras', 'carnes', 'aseo', 'otros'
   ) then
     raise exception 'La categoría no es válida.' using hint = 'invalid_category';
   end if;
 
+  -- Local: si viene un id, se toma el local existente; si no, se validan los datos del local nuevo.
   if target_store_id is not null then
     select s.name, s.location into clean_store, point
     from public.stores s
@@ -447,18 +488,20 @@ begin
     point := extensions.st_setsrid(extensions.st_makepoint(p_lng, p_lat), 4326)::extensions.geography;
   end if;
 
+  -- Zona: la oferta debe estar a menos de 40 km del centro del Gran Concepción.
   if not extensions.st_dwithin(point, region_center, 40000) then
     raise exception 'Por ahora MarketApp solo funciona en el Gran Concepción.'
       using hint = 'out_of_area';
   end if;
 
-  -- Photos must live in this user's own folder of the offer-photos bucket.
+  -- Las fotos deben estar en la carpeta propia del usuario dentro del bucket offer-photos
+  -- (impide usar fotos de otras personas o enlaces externos).
   if p_photo_url is not null
      and p_photo_url not like '%/storage/v1/object/public/offer-photos/' || uid::text || '/%' then
     raise exception 'La foto no es válida.' using hint = 'invalid_photo';
   end if;
 
-  -- Burst limit: 5 offers per 10 minutes (uses offers_created_by_idx).
+  -- Límite de ráfaga: máximo 5 ofertas cada 10 minutos (usa el índice offers_created_by_idx).
   select count(*) into recent_count
   from public.offers o
   where o.created_by = uid
@@ -469,7 +512,7 @@ begin
       using hint = 'rate_limited';
   end if;
 
-  -- Hourly limit: 10 offers per hour.
+  -- Límite por hora: máximo 10 ofertas por hora.
   select count(*) into recent_count
   from public.offers o
   where o.created_by = uid
@@ -480,8 +523,8 @@ begin
       using hint = 'rate_limited';
   end if;
 
-  -- Duplicates: same product and price already published in this store in the last 15 minutes,
-  -- by anyone. Only possible for an existing store (a new one has no offers yet).
+  -- Duplicados: el mismo producto y precio ya publicado en este local en los últimos 15 minutos,
+  -- por cualquier usuario. Solo aplica a locales existentes (uno nuevo todavía no tiene ofertas).
   if target_store_id is not null and exists (
     select 1
     from public.offers o
@@ -495,8 +538,9 @@ begin
       using hint = 'duplicate_offer';
   end if;
 
-  -- Outlier check: compare with similar visible products reported nearby in the last 30 days.
-  -- Only applies once there are at least 3 reports to compare against.
+  -- Precio fuera de rango: se compara con productos parecidos (similarity > 0.5) reportados a
+  -- menos de 30 km en los últimos 30 días. Si el precio es más del triple o menos de un tercio
+  -- de la mediana, se rechaza. Solo aplica cuando hay al menos 3 reportes para comparar.
   select count(*), percentile_cont(0.5) within group (order by o.price)
     into sample_count, median_price
   from public.offers o
@@ -511,6 +555,7 @@ begin
       using hint = 'price_outlier';
   end if;
 
+  -- Todo pasó: se crea el local (si es nuevo) y luego la oferta. Se devuelve el id de la oferta.
   if target_store_id is null then
     insert into public.stores (name, address, location, created_by)
     values (clean_store, clean_address, point, uid)
@@ -525,10 +570,12 @@ begin
 end;
 $$;
 
+-- Permisos: solo usuarios con sesión (incluidos los anónimos) pueden publicar.
 revoke execute on function public.submit_offer(text, integer, text, double precision, double precision, text, uuid, text, text)
   from public, anon;
 grant execute on function public.submit_offer(text, integer, text, double precision, double precision, text, uuid, text, text)
   to authenticated;
 
--- 6. Refresh PostgREST's schema cache so the changes are visible right away.
+-- 6. Recarga el esquema de PostgREST (la API automática de Supabase) para que los cambios se vean
+--    de inmediato desde la app.
 notify pgrst, 'reload schema';
